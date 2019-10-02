@@ -1,0 +1,9 @@
+<svg role="img" xmlns="http://www.w3.org/2000/svg" width="48px" height="48px"
+     viewBox="0 0 24 24" aria-labelledby="removeIconTitle removeIconDesc"
+     stroke="#000000" stroke-width="1" stroke-linecap="square"
+     stroke-linejoin="miter" fill="none" color="#000000">
+    <title id="removeIconTitle">Remove</title>
+    <desc id="removeIconDesc">Icon of a minus sign closed in a circle</desc>
+    <path d="M17,12 L7,12"/>
+    <circle cx="12" cy="12" r="10"/>
+</svg>

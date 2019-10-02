@@ -1,0 +1,659 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>SYSULUNG</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <widget class="QWidget" name="canvas_area"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1024</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>文件(&amp;F)</string>
+    </property>
+    <addaction name="open_file_action"/>
+    <addaction name="open_dir_action"/>
+    <addaction name="separator"/>
+    <addaction name="save_file_action"/>
+    <addaction name="saveas_file_action"/>
+    <addaction name="delete_file_action"/>
+    <addaction name="separator"/>
+    <addaction name="open_prev_image_action"/>
+    <addaction name="open_next_image_action"/>
+    <addaction name="separator"/>
+    <addaction name="change_output_dir_action"/>
+    <addaction name="separator"/>
+    <addaction name="quit_action"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>标记(&amp;A)</string>
+    </property>
+    <addaction name="create_polygon_action"/>
+    <addaction name="create_rect_action"/>
+    <addaction name="create_circle_action"/>
+    <addaction name="create_polyline_action"/>
+    <addaction name="create_line_action"/>
+    <addaction name="create_point_action"/>
+    <addaction name="separator"/>
+    <addaction name="select_line_color_action"/>
+    <addaction name="select_fill_color_action"/>
+    <addaction name="separator"/>
+    <addaction name="edit_mode_action"/>
+    <addaction name="separator"/>
+    <addaction name="copy_annotation_action"/>
+    <addaction name="delete_annotataion_action"/>
+    <addaction name="add_point_to_nearest_edge_action"/>
+    <addaction name="edit_annotation_label_action"/>
+    <addaction name="separator"/>
+    <addaction name="undo_last_point_action"/>
+    <addaction name="undo_last_shape_edit_action"/>
+    <addaction name="separator"/>
+    <addaction name="set_keep_prev_action"/>
+    <addaction name="set_fill_annotation_action"/>
+    <addaction name="set_autosave_action"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>视图(&amp;V)</string>
+    </property>
+    <addaction name="zoom_in_action"/>
+    <addaction name="zoom_out_action"/>
+    <addaction name="fit_window_action"/>
+    <addaction name="fit_window_width_action"/>
+    <addaction name="separator"/>
+    <addaction name="set_annotation_visibility_action"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>帮助(&amp;H)</string>
+    </property>
+    <addaction name="open_help_doc_action"/>
+   </widget>
+   <widget class="QMenu" name="menuDiagnose">
+    <property name="title">
+     <string>诊断(&amp;D)</string>
+    </property>
+    <addaction name="excute_lung_nodule_analysis_action"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuDiagnose"/>
+   <addaction name="menuView"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="open_file_action"/>
+   <addaction name="open_dir_action"/>
+   <addaction name="open_next_image_action"/>
+   <addaction name="open_prev_image_action"/>
+   <addaction name="save_file_action"/>
+   <addaction name="separator"/>
+   <addaction name="create_polygon_action"/>
+   <addaction name="create_rect_action"/>
+   <addaction name="copy_annotation_action"/>
+   <addaction name="delete_annotataion_action"/>
+   <addaction name="undo_last_shape_edit_action"/>
+   <addaction name="separator"/>
+   <addaction name="zoom_in_action"/>
+   <addaction name="zoom_out_action"/>
+   <addaction name="fit_window_action"/>
+   <addaction name="fit_window_width_action"/>
+   <addaction name="separator"/>
+  </widget>
+  <widget class="QDockWidget" name="annotation_list_dock">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>1</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string>标记列表</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="placeholder2"/>
+  </widget>
+  <widget class="QDockWidget" name="label_edit_dock">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>1</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string>标签编辑器</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="placeholder3">
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dataset_tree_dock">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>1</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string>数据库</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="placeholder5"/>
+  </widget>
+  <widget class="QDockWidget" name="series_list_dock">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>1</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string>当前序列</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>1</number>
+   </attribute>
+   <widget class="QWidget" name="placeholder6">
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+   </widget>
+  </widget>
+  <action name="open_file_action">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/open_file.svg</normaloff>icons/open_file.svg</iconset>
+   </property>
+   <property name="text">
+    <string>打开文件</string>
+   </property>
+   <property name="toolTip">
+    <string>打开一个文件</string>
+   </property>
+  </action>
+  <action name="open_dir_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/folder.svg</normaloff>icons/folder.svg</iconset>
+   </property>
+   <property name="text">
+    <string>打开文件夹</string>
+   </property>
+   <property name="toolTip">
+    <string>选择文件夹，添加其中所有满足条件的文件</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="quit_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/quit.svg</normaloff>icons/quit.svg</iconset>
+   </property>
+   <property name="text">
+    <string>退出程序</string>
+   </property>
+   <property name="toolTip">
+    <string>退出程序</string>
+   </property>
+  </action>
+  <action name="open_next_image_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/next.svg</normaloff>icons/next.svg</iconset>
+   </property>
+   <property name="text">
+    <string>下一张</string>
+   </property>
+   <property name="toolTip">
+    <string>查看下一张图像，按下Ctrl+Shift进行标记保持</string>
+   </property>
+   <property name="shortcut">
+    <string>D</string>
+   </property>
+  </action>
+  <action name="open_prev_image_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/prev.svg</normaloff>icons/prev.svg</iconset>
+   </property>
+   <property name="text">
+    <string>上一张</string>
+   </property>
+   <property name="toolTip">
+    <string>查看上一张图像，按下Ctrl+Shift进行标记保持</string>
+   </property>
+   <property name="shortcut">
+    <string>A</string>
+   </property>
+  </action>
+  <action name="save_file_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/save.svg</normaloff>icons/save.svg</iconset>
+   </property>
+   <property name="text">
+    <string>保存</string>
+   </property>
+   <property name="toolTip">
+    <string>保存对当前图像的更改</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="saveas_file_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/save.svg</normaloff>icons/save.svg</iconset>
+   </property>
+   <property name="text">
+    <string>另存为</string>
+   </property>
+   <property name="toolTip">
+    <string>将当前图像以指定格式保存到指定位置</string>
+   </property>
+  </action>
+  <action name="delete_file_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/delete.svg</normaloff>icons/delete.svg</iconset>
+   </property>
+   <property name="text">
+    <string>删除标记文件</string>
+   </property>
+   <property name="toolTip">
+    <string>删除当前图像的标记文件</string>
+   </property>
+  </action>
+  <action name="change_output_dir_action">
+   <property name="text">
+    <string>更改输出文件夹</string>
+   </property>
+   <property name="toolTip">
+    <string>更改当前文件序列的标记输出文件夹</string>
+   </property>
+  </action>
+  <action name="set_autosave_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/unchecked.svg</normaloff>
+     <normalon>icons/checked.svg</normalon>icons/unchecked.svg</iconset>
+   </property>
+   <property name="text">
+    <string>自动保存</string>
+   </property>
+   <property name="toolTip">
+    <string>启用/禁用自动保存</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="create_polygon_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/polygon.svg</normaloff>icons/polygon.svg</iconset>
+   </property>
+   <property name="text">
+    <string>创建多边形标记</string>
+   </property>
+   <property name="toolTip">
+    <string>创建多边形标记</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="create_rect_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/rectangle.svg</normaloff>icons/rectangle.svg</iconset>
+   </property>
+   <property name="text">
+    <string>创建矩形标记</string>
+   </property>
+   <property name="toolTip">
+    <string>创建矩形标记</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+E</string>
+   </property>
+  </action>
+  <action name="create_circle_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/circle.svg</normaloff>icons/circle.svg</iconset>
+   </property>
+   <property name="text">
+    <string>创建圆形标记</string>
+   </property>
+   <property name="toolTip">
+    <string>创建圆形标记</string>
+   </property>
+  </action>
+  <action name="create_polyline_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/polyline.svg</normaloff>icons/polyline.svg</iconset>
+   </property>
+   <property name="text">
+    <string>创建折线标记</string>
+   </property>
+   <property name="toolTip">
+    <string>创建折线标记</string>
+   </property>
+  </action>
+  <action name="create_line_action">
+   <property name="text">
+    <string>创建线段标记</string>
+   </property>
+   <property name="toolTip">
+    <string>创建线段标记</string>
+   </property>
+  </action>
+  <action name="create_point_action">
+   <property name="text">
+    <string>创建点标记</string>
+   </property>
+   <property name="toolTip">
+    <string>创建点标记</string>
+   </property>
+  </action>
+  <action name="edit_mode_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/unchecked.svg</normaloff>
+     <normalon>icons/checked.svg</normalon>icons/unchecked.svg</iconset>
+   </property>
+   <property name="text">
+    <string>编辑模式</string>
+   </property>
+   <property name="toolTip">
+    <string>进入编辑模式，对标记进行编辑和诊断</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="undo_last_point_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/undo.svg</normaloff>icons/undo.svg</iconset>
+   </property>
+   <property name="text">
+    <string>撤销点</string>
+   </property>
+   <property name="toolTip">
+    <string>撤销创建的最后一个点</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="undo_last_shape_edit_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/undo.svg</normaloff>icons/undo.svg</iconset>
+   </property>
+   <property name="text">
+    <string>撤销标记编辑</string>
+   </property>
+   <property name="toolTip">
+    <string>撤销对标记的最后一次编辑</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Z</string>
+   </property>
+  </action>
+  <action name="select_line_color_action">
+   <property name="text">
+    <string>边框颜色</string>
+   </property>
+   <property name="toolTip">
+    <string>选择创建标记时边框的颜色</string>
+   </property>
+  </action>
+  <action name="select_fill_color_action">
+   <property name="text">
+    <string>填充颜色</string>
+   </property>
+   <property name="toolTip">
+    <string>选择创建标记时填充的颜色</string>
+   </property>
+  </action>
+  <action name="set_keep_prev_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>标记保持</string>
+   </property>
+   <property name="toolTip">
+    <string>启动/禁用标记保持，决定是否将当前图像标记复制到下一张打开的图像</string>
+   </property>
+  </action>
+  <action name="copy_annotation_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/copy.svg</normaloff>icons/copy.svg</iconset>
+   </property>
+   <property name="text">
+    <string>复制标记</string>
+   </property>
+   <property name="toolTip">
+    <string>在当前选中的标记旁创建一个拷贝</string>
+   </property>
+  </action>
+  <action name="delete_annotataion_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/remove.svg</normaloff>icons/remove.svg</iconset>
+   </property>
+   <property name="text">
+    <string>删除标记</string>
+   </property>
+   <property name="toolTip">
+    <string>删除当前选中的标记</string>
+   </property>
+  </action>
+  <action name="add_point_to_nearest_edge_action">
+   <property name="text">
+    <string>添加点到标记</string>
+   </property>
+   <property name="toolTip">
+    <string>向距离指针最近的边增加一个点</string>
+   </property>
+  </action>
+  <action name="set_annotation_visibility_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>标记可见</string>
+   </property>
+   <property name="toolTip">
+    <string>显示/隐藏所有标记</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+H</string>
+   </property>
+  </action>
+  <action name="zoom_in_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/zoom_in.svg</normaloff>icons/zoom_in.svg</iconset>
+   </property>
+   <property name="text">
+    <string>放大图像</string>
+   </property>
+   <property name="toolTip">
+    <string>将图像放大1.1倍</string>
+   </property>
+  </action>
+  <action name="zoom_out_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/zoom_out.svg</normaloff>icons/zoom_out.svg</iconset>
+   </property>
+   <property name="text">
+    <string>缩小图像</string>
+   </property>
+   <property name="toolTip">
+    <string>将图像缩小为0.9倍</string>
+   </property>
+  </action>
+  <action name="fit_window_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/fit_window.svg</normaloff>icons/fit_window.svg</iconset>
+   </property>
+   <property name="text">
+    <string>适合窗口</string>
+   </property>
+   <property name="toolTip">
+    <string>将图像缩放到适合当前窗口</string>
+   </property>
+  </action>
+  <action name="fit_window_width_action">
+   <property name="text">
+    <string>适合窗口宽度</string>
+   </property>
+   <property name="toolTip">
+    <string>将图像缩放到适合窗口宽度</string>
+   </property>
+  </action>
+  <action name="edit_annotation_label_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/label.svg</normaloff>icons/label.svg</iconset>
+   </property>
+   <property name="text">
+    <string>编辑标记标签</string>
+   </property>
+   <property name="toolTip">
+    <string>编辑当前选中标记的标签</string>
+   </property>
+  </action>
+  <action name="edit_annotation_line_color_action">
+   <property name="text">
+    <string>编辑边框颜色</string>
+   </property>
+   <property name="toolTip">
+    <string>选择当前选中标记边框的颜色</string>
+   </property>
+  </action>
+  <action name="set_fill_annotation_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/unchecked.svg</normaloff>icons/unchecked.svg</iconset>
+   </property>
+   <property name="text">
+    <string>标记填充</string>
+   </property>
+   <property name="toolTip">
+    <string>启用/禁用对标记的填充</string>
+   </property>
+  </action>
+  <action name="edit_annotation_fill_color_action">
+   <property name="text">
+    <string>编辑填充颜色</string>
+   </property>
+   <property name="toolTip">
+    <string>选择当前选中标记填充的颜色</string>
+   </property>
+  </action>
+  <action name="open_help_doc_action">
+   <property name="text">
+    <string>打开帮助文档</string>
+   </property>
+   <property name="toolTip">
+    <string>打开帮助文档</string>
+   </property>
+  </action>
+  <action name="excute_lung_nodule_analysis_action">
+   <property name="text">
+    <string>完整肺结节分析</string>
+   </property>
+   <property name="toolTip">
+    <string>对当前序列进行肺结节检测，分类和特征提取</string>
+   </property>
+  </action>
+  <zorder>label_edit_dock</zorder>
+  <zorder>annotation_list_dock</zorder>
+  <zorder>flag_list_dock</zorder>
+  <zorder>specific_feature_dock</zorder>
+  <zorder>series_list_dock</zorder>
+  <zorder>dataset_tree_dock</zorder>
+ </widget>
+ <resources/>
+ <connections/>
+ <slots>
+  <slot>openFile()</slot>
+ </slots>
+</ui>
