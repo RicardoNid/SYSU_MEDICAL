@@ -47,10 +47,6 @@ class LogicClass(QMainWindow, Ui_MainWindow):
         self.zoom.setDefaultWidget(self.zoomWidget)
         self.toolBar.insertAction(self.zoom_out_action, self.zoom)
 
-        self.canvas_area = QScrollArea()
-        self.canvas_widget = Canvas()
-        self.canvas_area.setWidget(self.canvas_widget)
-        self.setCentralWidget(self.canvas_area)
         self.coupling_canvas()
 
         self.resize(1920,1080)
@@ -72,9 +68,16 @@ class LogicClass(QMainWindow, Ui_MainWindow):
 
     def coupling_canvas(self):
         '''初始化的一部分，执行与canvas组件耦合的指令，单列一个函数以提升可读性'''
-        pass
+        self.canvas_area = QScrollArea()
+        self.canvas_widget = Canvas()
+        self.canvas_area.setWidget(self.canvas_widget)
+        self.setCentralWidget(self.canvas_area)
 
-    Qt.MiddleButton
+        self.edit_mode_action.triggered.connect(self.edit_mode_slot)
+
+    def edit_mode_slot(self):
+        self.canvas_widget.create_mode = False
+
 
 
 

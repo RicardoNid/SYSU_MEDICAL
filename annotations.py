@@ -34,9 +34,9 @@ class Annotation(object):
     MOVE_VERTEX, NEAR_VERTEX = 0, 1
 
     # 类属性为对象属性提供了默认值，会被同名对象属性覆盖
-    # shape边框颜色
+    # annotation边框颜色
     line_color = DEFAULT_LINE_COLOR
-    # shape填充颜色
+    # annotation填充颜色
     fill_color = DEFAULT_FILL_COLOR
 
     select_line_color = DEFAULT_SELECT_LINE_COLOR
@@ -51,7 +51,7 @@ class Annotation(object):
     #
     scale = 1.0
 
-    def __init__(self, label=None, line_color=None, shape_type=None,
+    def __init__(self, label=None, line_color=None, annotation_type=None,
                  flags=None):
         # 数据属性：点，标签（只能有一个）和标志（可以有多个）
         self.points = []
@@ -63,7 +63,7 @@ class Annotation(object):
         self.selected = False
         self.fill = False
         self._closed = False
-        self.shape_type = shape_type
+        self.annotation_type = annotation_type
         # TODO: 补充注释
         self._highlightIndex = None
         self._highlightMode = self.NEAR_VERTEX
@@ -77,18 +77,18 @@ class Annotation(object):
 
     # ----------property属性----------#
     @property
-    def shape_type(self):
-        return self._shape_type
+    def annotation_type(self):
+        return self._annotation_type
 
-    @shape_type.setter
+    @annotation_type.setter
     # 通过setter进行赋值控制
-    def shape_type(self, value):
+    def annotation_type(self, value):
         if value is None:
             value = 'polygon'
         if value not in ['polygon', 'rectangle', 'point',
                          'line', 'circle', 'linestrip']:
-            raise ValueError('Unexpected shape_type: {}'.format(value))
-        self._shape_type = value
+            raise ValueError('Unexpected annotation_type: {}'.format(value))
+        self._annotation_type = value
 
     # ----------重载魔术方法----------#
     def __len__(self):
@@ -112,7 +112,7 @@ class Annotation(object):
     def isClosed(self):
         return self._closed
 
-    # ----------编辑shape中的点----------#
+    # ----------编辑annotation中的点----------#
     def addPoint(self, point):
         if self.points and point == self.points[0]:
             self.close()
@@ -131,7 +131,7 @@ class Annotation(object):
 
     # -----------获取临近顶点和边----------#
     def nearestVertex(self, point, epsilon):
-        '''返回shape中离point最近的的顶点的序号，距离需要小于epsilon，若没有则返回None'''
+        '''返回annotation中离point最近的的顶点的序号，距离需要小于epsilon，若没有则返回None'''
         min_distance = float('inf')
         min_i = None
         for i, p in enumerate(self.points):
@@ -143,7 +143,7 @@ class Annotation(object):
         return min_i
 
     def nearestEdge(self, point, epsilon):
-        '''返回shape中离point最近的的边的序号，距离需要小于epsilon，若没有则返回None'''
+        '''返回annotation中离point最近的的边的序号，距离需要小于epsilon，若没有则返回None'''
         min_distance = float('inf')
         post_i = None
         for i in range(len(self.points)):
@@ -158,12 +158,12 @@ class Annotation(object):
     # 构造这个对象是为了调用其在Qt中的方法实现包含检查和boundbox生成
     # question: 改写为property？
     def makePath(self):
-        if self.shape_type == 'rectangle':
+        if self.annotation_type == 'rectangle':
             path = QtGui.QPainterPath()
             if len(self.points) == 2:
                 rectangle = self.getRectFromLine(*self.points)
                 path.addRect(rectangle)
-        elif self.shape_type == "circle":
+        elif self.annotation_type == "circle":
             path = QtGui.QPainterPath()
             if len(self.points) == 2:
                 rectangle = self.getCircleRectFromLine(self.points)
@@ -174,7 +174,7 @@ class Annotation(object):
                 path.lineTo(p)
         return path
 
-    # 获取shape的boundingbox
+    # 获取annotation的boundingbox
     def boundingRect(self):
         return self.makePath().boundingRect()
 
@@ -182,7 +182,7 @@ class Annotation(object):
         return self.makePath().contains(point)
 
     # -----------获取矩形和被圆内切的矩形RectF对象----------#
-    # insight: 这两个方法的目的也是获取shape的boundingbox，
+    # insight: 这两个方法的目的也是获取annotation的boundingbox，
     #   因为矩形和圆的模型异于其他，不能被QPainterPath涵盖，所以专门实现
     def getRectFromLine(self, pt1, pt2):
         x1, y1 = pt1.x(), pt1.y()
@@ -215,7 +215,7 @@ class Annotation(object):
             line_path = QtGui.QPainterPath()
             vrtx_path = QtGui.QPainterPath()
 
-            if self.shape_type == 'rectangle':
+            if self.annotation_type == 'rectangle':
                 assert len(self.points) in [1, 2]
                 if len(self.points) == 2:
                     rectangle = self.getRectFromLine(*self.points)
@@ -223,7 +223,7 @@ class Annotation(object):
                 for i in range(len(self.points)):
                     self.drawVertex(vrtx_path, i)
 
-            elif self.shape_type == "circle":
+            elif self.annotation_type == "circle":
                 assert len(self.points) in [1, 2]
                 if len(self.points) == 2:
                     rectangle = self.getCircleRectFromLine(self.points)
@@ -231,7 +231,7 @@ class Annotation(object):
                 for i in range(len(self.points)):
                     self.drawVertex(vrtx_path, i)
 
-            elif self.shape_type == "linestrip":
+            elif self.annotation_type == "linestrip":
                 line_path.moveTo(self.points[0])
                 for i, p in enumerate(self.points):
                     line_path.lineTo(p)
@@ -259,21 +259,21 @@ class Annotation(object):
 
     def drawVertex(self, path, i):
         d = self.point_size / self.scale
-        shape = self.point_type
+        annotation = self.point_type
         point = self.points[i]
         if i == self._highlightIndex:
-            size, shape = self._highlightSettings[self._highlightMode]
+            size, annotation = self._highlightSettings[self._highlightMode]
             d *= size
         if self._highlightIndex is not None:
             self.vertex_fill_color = self.hvertex_fill_color
         else:
             self.vertex_fill_color = Annotation.vertex_fill_color
-        if shape == self.P_SQUARE:
+        if annotation == self.P_SQUARE:
             path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
-        elif shape == self.P_ROUND:
+        elif annotation == self.P_ROUND:
             path.addEllipse(point, d / 2.0, d / 2.0)
         else:
-            assert False, "unsupported vertex shape"
+            assert False, "unsupported vertex annotation"
 
     # ----------高亮操作----------#
     def highlightVertex(self, i, action):
