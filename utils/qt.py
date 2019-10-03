@@ -87,3 +87,11 @@ def distancetoline(point, line):
 def fmtShortcut(text):
     mod, key = text.split('+', 1)
     return '<b>%s</b>+<b>%s</b>' % (mod, key)
+
+def disable_actions(actions: list):
+    for action in actions:
+        action.setEnabled(False)
+
+def enable_actions(actions: list):
+    for action in actions:
+        action.setEnabled(True)

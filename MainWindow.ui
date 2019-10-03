@@ -55,7 +55,7 @@
      <string>标记(&amp;A)</string>
     </property>
     <addaction name="create_polygon_action"/>
-    <addaction name="create_rect_action"/>
+    <addaction name="create_rectangle_action"/>
     <addaction name="create_circle_action"/>
     <addaction name="create_polyline_action"/>
     <addaction name="create_line_action"/>
@@ -71,8 +71,7 @@
     <addaction name="add_point_to_nearest_edge_action"/>
     <addaction name="edit_annotation_label_action"/>
     <addaction name="separator"/>
-    <addaction name="undo_last_point_action"/>
-    <addaction name="undo_last_shape_edit_action"/>
+    <addaction name="canvas_undo_action"/>
     <addaction name="separator"/>
     <addaction name="set_keep_prev_action"/>
     <addaction name="set_fill_annotation_action"/>
@@ -126,10 +125,10 @@
    <addaction name="save_file_action"/>
    <addaction name="separator"/>
    <addaction name="create_polygon_action"/>
-   <addaction name="create_rect_action"/>
+   <addaction name="create_rectangle_action"/>
    <addaction name="copy_annotation_action"/>
    <addaction name="delete_annotataion_action"/>
-   <addaction name="undo_last_shape_edit_action"/>
+   <addaction name="canvas_undo_action"/>
    <addaction name="separator"/>
    <addaction name="zoom_in_action"/>
    <addaction name="zoom_out_action"/>
@@ -364,7 +363,7 @@
     <string>Ctrl+Q</string>
    </property>
   </action>
-  <action name="create_rect_action">
+  <action name="create_rectangle_action">
    <property name="icon">
     <iconset>
      <normaloff>icons/rectangle.svg</normaloff>icons/rectangle.svg</iconset>
@@ -420,16 +419,13 @@
    </property>
   </action>
   <action name="edit_mode_action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
    <property name="icon">
     <iconset>
      <normaloff>icons/unchecked.svg</normaloff>
      <normalon>icons/checked.svg</normalon>icons/unchecked.svg</iconset>
    </property>
    <property name="text">
-    <string>编辑模式</string>
+    <string>进入编辑模式</string>
    </property>
    <property name="toolTip">
     <string>进入编辑模式，对标记进行编辑和诊断</string>
@@ -438,31 +434,16 @@
     <string>Ctrl+R</string>
    </property>
   </action>
-  <action name="undo_last_point_action">
+  <action name="canvas_undo_action">
    <property name="icon">
     <iconset>
      <normaloff>icons/undo.svg</normaloff>icons/undo.svg</iconset>
    </property>
    <property name="text">
-    <string>撤销点</string>
+    <string>撤销</string>
    </property>
    <property name="toolTip">
-    <string>撤销创建的最后一个点</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Z</string>
-   </property>
-  </action>
-  <action name="undo_last_shape_edit_action">
-   <property name="icon">
-    <iconset>
-     <normaloff>icons/undo.svg</normaloff>icons/undo.svg</iconset>
-   </property>
-   <property name="text">
-    <string>撤销标记编辑</string>
-   </property>
-   <property name="toolTip">
-    <string>撤销对标记的最后一次编辑</string>
+    <string>撤销对标记的上一次操作</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Z</string>
@@ -646,8 +627,6 @@
   </action>
   <zorder>label_edit_dock</zorder>
   <zorder>annotation_list_dock</zorder>
-  <zorder>flag_list_dock</zorder>
-  <zorder>specific_feature_dock</zorder>
   <zorder>series_list_dock</zorder>
   <zorder>dataset_tree_dock</zorder>
  </widget>

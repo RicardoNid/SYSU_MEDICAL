@@ -86,7 +86,7 @@ class Annotation(object):
         if value is None:
             value = 'polygon'
         if value not in ['polygon', 'rectangle', 'point',
-                         'line', 'circle', 'linestrip']:
+                         'line', 'circle', 'polyline']:
             raise ValueError('Unexpected annotation_type: {}'.format(value))
         self._annotation_type = value
 
@@ -231,7 +231,7 @@ class Annotation(object):
                 for i in range(len(self.points)):
                     self.drawVertex(vrtx_path, i)
 
-            elif self.annotation_type == "linestrip":
+            elif self.annotation_type == "polyline":
                 line_path.moveTo(self.points[0])
                 for i, p in enumerate(self.points):
                     line_path.lineTo(p)

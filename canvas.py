@@ -26,10 +26,15 @@ class Canvas(QtWidgets.QWidget):
 
     wlwwRequest = QtCore.pyqtSignal(float, float)
 
-    newShape = QtCore.pyqtSignal()
+
     selectionChanged = QtCore.pyqtSignal(list)
     annotationMoved = QtCore.pyqtSignal()
-    drawingPolygon = QtCore.pyqtSignal(bool)
+
+    # 通知主窗口有标记开始被创建/创建被完成或取消
+    is_canvas_creating_signal = QtCore.pyqtSignal(bool)
+    # 通知主窗口由新标记被创建/复制而产生
+    new_shape_created = QtCore.pyqtSignal()
+
     edgeSelected = QtCore.pyqtSignal(bool)
 
     def __init__(self, *args, **kwargs):
@@ -40,45 +45,41 @@ class Canvas(QtWidgets.QWidget):
         # 数据支持
         # 支持当前交互模式判别
         # 若_create_mode不为True，则为编辑模式
-        self._create_mode = True
-        self._create_type = 'linestrip'
+        self._create_mode = False
+        self._create_type = 'polygon'
         # 支持当前绘图设定查询
         self._fill_annotation = False
 
-        # 数据变量
-        # 标记列表和备份数据
         self.movingShape = False
         # 当前正在绘制的标记
-        self.current = None
+        self.current_annotation = None
+        self.line_color = QtGui.QColor(0, 0, 255)
+        self.current_line = Annotation(line_color=self.line_color)
+
         # 当前窗口中的所有标记
         self.annotations = []
         self.annotataions_backups = []
+
         # 当前选中的形状
         self.selected_annotations = []
-        # question: 备份？
+        # question
+        # 当前选中形状的拷贝，进行复制和移动时先在其上进行操作
         self.selected_annotations_copy = []
-        self.lineColor = QtGui.QColor(0, 0, 255)
-        # 正在绘制的标记的最后一条边，具体如下
-        #   - create_type == 'polygon': edge from last point to current
-        #   - create_type == 'rectangle': diagonal line of the rectangle
-        #   - create_type == 'line': the line
-        #   - create_type == 'point': the point
-        self.line = Annotation(line_color=self.lineColor)
+
+
+
         self.prevPoint = QtCore.QPoint()
         # TODO: 补充注释
         self.prevMovePoint = QtCore.QPoint()
         self.prevprevMovePoint = None
         self.offsets = QtCore.QPoint(), QtCore.QPoint()
         self.scale = 1.0
-        # TODO: 补充注释
-        self.visible = {}
+        # 记录和管理标记的可见性
+        self.annotations_visibility = {}
 
         self.pixmap = QtGui.QPixmap()
         self.pixmap = QtGui.QPixmap(
             r'C:\Users\lsfan\PycharmProjects\SYSU_LUNG\EVA.jpg')
-        # question: 为何这样设计？
-        self._hideBackround = False
-        self.hideBackround = False
         # 高亮的annotation，顶点和边
         self.hShape = None
         self.hVertex = None
@@ -94,8 +95,7 @@ class Canvas(QtWidgets.QWidget):
         self.setMouseTracking(True)
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
 
-        print('init over')
-
+    '''下面的property属性定义了当前所处模式和模式改变方法'''
     @property
     def create_mode(self):
         return self._create_mode
@@ -108,7 +108,6 @@ class Canvas(QtWidgets.QWidget):
             self.unHighlight()
             self.deSelectShape()
 
-    '''下面的property属性定义了当前所处模式和模式改变方法'''
     @property
     def create_type(self):
         return self._create_type
@@ -116,7 +115,7 @@ class Canvas(QtWidgets.QWidget):
     @create_type.setter
     def create_type(self, value):
         if value not in ['polygon', 'rectangle', 'circle',
-                         'line', 'point', 'linestrip']:
+                         'line', 'point', 'polyline']:
             raise ValueError('Unsupported create_type: %s' % value)
         self._create_type = value
 
@@ -128,7 +127,7 @@ class Canvas(QtWidgets.QWidget):
     def fill_annotation(self, value):
         self._fill_annotation = value
 
-    '''下面的函数支持标记编辑的撤销'''
+    '''下面的方法支持canvas_undo_action'''
     # 将最近的的10个标记列表（最近的10个标记状态）备份
     def store_annotations(self):
         annotations_backup = []
@@ -149,7 +148,7 @@ class Canvas(QtWidgets.QWidget):
     def restore_annotations(self):
         if not self.is_annotation_restoreable:
             return
-        self.annotataions_backups.pop()  # latest
+        self.annotataions_backups.pop()
         annotations_backup = self.annotataions_backups.pop()
         self.annotations = annotations_backup
         self.selected_annotations = []
@@ -157,7 +156,33 @@ class Canvas(QtWidgets.QWidget):
             annotation.selected = False
         self.repaint()
 
-    '''下面的事件和函数支持光标变化'''
+    # 撤销最后一个被创建标记的最后一个点
+    def undoLastLine(self):
+        if len(self.annotations) == 0:
+            return
+        self.current_annotation = self.annotations.pop()
+        self.current_annotation.setOpen()
+        if self.create_type in ['polygon', 'polyline']:
+            self.current_line.points = [self.current_annotation[-1], self.current_annotation[0]]
+        elif self.create_type in ['rectangle', 'line', 'circle']:
+            self.current_annotation.points = self.current_annotation.points[0:1]
+        elif self.create_type == 'point':
+            self.current_annotation = None
+        self.is_canvas_creating_signal.emit(True)
+
+    # 撤销当前被创建标记的最后一个点
+    def undoLastPoint(self):
+        if not self.current_annotation or self.current_annotation.isClosed():
+            return
+        self.current_annotation.popPoint()
+        if len(self.current_annotation) > 0:
+            self.current_line[0] = self.current_annotation[-1]
+        else:
+            self.current_annotation = None
+            self.is_canvas_creating_signal.emit(False)
+        self.repaint()
+
+    '''下面的事件和方法支持光标变化'''
     def enterEvent(self, ev):
         self.override_cursor(self._cursor)
 
@@ -183,11 +208,11 @@ class Canvas(QtWidgets.QWidget):
 
     '''布尔条件判断'''
     def is_annotation_visible(self, annotation):
-        return self.visible.get(annotation, True)
+        return self.annotations_visibility.get(annotation, True)
 
     def is_current_annotation_finalizable(self):
         # 至少要有三个点才能结束手动结束绘制，两点完成的annotation类型会自动结束绘制
-        return self.create_mode and self.current and len(self.current) > 2
+        return self.create_mode and self.current_annotation and len(self.current_annotation) > 2
 
     def is_close_enough(self, p1, p2):
         return utils.distance(p1 - p2) < (self.epsilon / self.scale)
@@ -201,8 +226,6 @@ class Canvas(QtWidgets.QWidget):
     def endMove(self, copy):
         assert self.selected_annotations and self.selected_annotations_copy
         assert len(self.selected_annotations_copy) == len(self.selected_annotations)
-        # del annotation.fill_color
-        # del annotation.line_color
         if copy:
             for i, annotation in enumerate(self.selected_annotations_copy):
                 self.annotations.append(annotation)
@@ -218,7 +241,6 @@ class Canvas(QtWidgets.QWidget):
 
     def deSelectShape(self):
         if self.selected_annotations:
-            self.setHiding(False)
             self.selectionChanged.emit([])
             self.update()
 
@@ -240,17 +262,19 @@ class Canvas(QtWidgets.QWidget):
             self.endMove(copy=True)
         return self.selected_annotations
 
+    '''下面的方法支持标记绘制'''
     def finalise(self):
-        assert self.current
-        self.current.close()
-        self.annotations.append(self.current)
+        assert self.current_annotation
+        self.current_annotation.close()
+        self.annotations.append(self.current_annotation)
         self.store_annotations()
-        self.current = None
-        self.setHiding(False)
-        self.newShape.emit()
+        self.current_annotation = None
+        self.is_canvas_creating_signal.emit(False)
+        self.new_shape_created.emit()
         self.update()
 
     def boundedMoveVertex(self, pos):
+        print('moving vertex')
         index, annotation = self.hVertex, self.hShape
         point = annotation[index]
         if self.is_out_of_pixmap(pos):
@@ -258,6 +282,7 @@ class Canvas(QtWidgets.QWidget):
         annotation.moveVertexBy(index, pos - point)
 
     def boundedMoveShapes(self, annotations, pos):
+        print('moving shape')
         if self.is_out_of_pixmap(pos):
             return False  # No need to move
         o1 = pos + self.offsets[0]
@@ -281,7 +306,6 @@ class Canvas(QtWidgets.QWidget):
         return False
 
     def selectShapes(self, annotations):
-        self.setHiding()
         self.selectionChanged.emit(annotations)
         self.update()
 
@@ -294,7 +318,6 @@ class Canvas(QtWidgets.QWidget):
             for annotation in reversed(self.annotations):
                 if self.is_annotation_visible(annotation) and annotation.containsPoint(point):
                     self.calculateOffsets(annotation, point)
-                    self.setHiding()
                     if multiple_selection_mode:
                         if annotation not in self.selected_annotations:
                             self.selectionChanged.emit(
@@ -303,14 +326,6 @@ class Canvas(QtWidgets.QWidget):
                         self.selectionChanged.emit([annotation])
                     return
         self.deSelectShape()
-
-    def hideBackroundShapes(self, value):
-        self.hideBackround = value
-        if self.selected_annotations:
-            # Only hide other annotations if there is a current selection.
-            # Otherwise the user will not be able to select a annotation.
-            self.setHiding(True)
-            self.repaint()
 
     def addPointToEdge(self):
         # 需要有一个选中的标记，一条选中的边和一个前置点
@@ -326,9 +341,6 @@ class Canvas(QtWidgets.QWidget):
         self.hShape = annotation
         self.hVertex = index
         self.hEdge = None
-
-    def setHiding(self, enable=True):
-        self._hideBackround = self.hideBackround if enable else False
 
     # question: what for?
     def boundedShiftShapes(self, annotations):
@@ -367,7 +379,7 @@ class Canvas(QtWidgets.QWidget):
 
     def intersectionPoint(self, p1, p2):
         # Cycle through each image edge in clockwise fashion,
-        # and find the one intersecting the current line segment.
+        # and find the one intersecting the current_annotation line segment.
         # http://paulbourke.net/geometry/lineline2d/
         size = self.pixmap.size()
         points = [(0, 0),
@@ -439,29 +451,6 @@ class Canvas(QtWidgets.QWidget):
         self.store_annotations()
         return self.annotations[-1]
 
-    def undoLastLine(self):
-        assert self.annotations
-        self.current = self.annotations.pop()
-        self.current.setOpen()
-        if self.create_type in ['polygon', 'linestrip']:
-            self.line.points = [self.current[-1], self.current[0]]
-        elif self.create_type in ['rectangle', 'line', 'circle']:
-            self.current.points = self.current.points[0:1]
-        elif self.create_type == 'point':
-            self.current = None
-        self.drawingPolygon.emit(True)
-
-    def undoLastPoint(self):
-        if not self.current or self.current.isClosed():
-            return
-        self.current.popPoint()
-        if len(self.current) > 0:
-            self.line[0] = self.current[-1]
-        else:
-            self.current = None
-            self.drawingPolygon.emit(False)
-        self.repaint()
-
     def loadPixmap(self, pixmap):
         self.pixmap = pixmap
         self.annotations = []
@@ -473,11 +462,11 @@ class Canvas(QtWidgets.QWidget):
         else:
             self.annotations.extend(annotations)
         self.store_annotations()
-        self.current = None
+        self.current_annotation = None
         self.repaint()
 
     def setShapeVisible(self, annotation, value):
-        self.visible[annotation] = value
+        self.annotations_visibility[annotation] = value
         self.repaint()
 
     def resetState(self):
@@ -488,55 +477,52 @@ class Canvas(QtWidgets.QWidget):
 
     # 各种状态下的鼠标移动事件
     def mouseMoveEvent(self, ev):
-        """Update line with last point and current coordinates."""
-        print('move')
-        try:
-            pos = self.transformPos(ev.localPos())
-        except AttributeError:
-            return
+        """Update line with last point and current_annotation coordinates."""
+        # 始终追踪鼠标位置
+        pos = self.transformPos(ev.localPos())
 
         self.prevMovePoint = pos
         self.restore_cursor()
 
         # 新建标记状态下的移动
         if self.create_mode:
-            self.line.annotation_type = self.create_type
+            self.current_line.annotation_type = self.create_type
 
             self.override_cursor(CURSOR_DRAW)
-            if not self.current:
+            if not self.current_annotation:
                 return
 
-            color = self.lineColor
+            color = self.line_color
             if self.is_out_of_pixmap(pos):
                 # Don't allow the user to draw outside the pixmap.
                 # Project the point to the pixmap's edges.
-                pos = self.intersectionPoint(self.current[-1], pos)
-            elif len(self.current) > 1 and self.create_type == 'polygon' and \
-                    self.is_close_enough(pos, self.current[0]):
+                pos = self.intersectionPoint(self.current_annotation[-1], pos)
+            elif len(self.current_annotation) > 1 and self.create_type == 'polygon' and \
+                    self.is_close_enough(pos, self.current_annotation[0]):
                 # Attract line to starting point and
                 # colorise to alert the user.
-                pos = self.current[0]
-                color = self.current.line_color
+                pos = self.current_annotation[0]
+                color = self.current_annotation.line_color
                 self.override_cursor(CURSOR_POINT)
-                self.current.highlightVertex(0, Annotation.NEAR_VERTEX)
-            if self.create_type in ['polygon', 'linestrip']:
-                self.line[0] = self.current[-1]
-                self.line[1] = pos
+                self.current_annotation.highlightVertex(0, Annotation.NEAR_VERTEX)
+            if self.create_type in ['polygon', 'polyline']:
+                self.current_line[0] = self.current_annotation[-1]
+                self.current_line[1] = pos
             elif self.create_type == 'rectangle':
-                self.line.points = [self.current[0], pos]
-                self.line.close()
+                self.current_line.points = [self.current_annotation[0], pos]
+                self.current_line.close()
             elif self.create_type == 'circle':
-                self.line.points = [self.current[0], pos]
-                self.line.annotation_type = "circle"
+                self.current_line.points = [self.current_annotation[0], pos]
+                self.current_line.annotation_type = "circle"
             elif self.create_type == 'line':
-                self.line.points = [self.current[0], pos]
-                self.line.close()
+                self.current_line.points = [self.current_annotation[0], pos]
+                self.current_line.close()
             elif self.create_type == 'point':
-                self.line.points = [self.current[0]]
-                self.line.close()
-            self.line.line_color = color
+                self.current_line.points = [self.current_annotation[0]]
+                self.current_line.close()
+            self.current_line.line_color = color
             self.repaint()
-            self.current.highlightClear()
+            self.current_annotation.highlightClear()
             return
 
         # MYCODE: 增加通过按住ctrl和鼠标左键移动鼠标调整窗位窗宽的事件
@@ -624,34 +610,33 @@ class Canvas(QtWidgets.QWidget):
         # 按下左键时
         if ev.button() == QtCore.Qt.LeftButton:
             if self.create_mode:
-                if self.current:
+                if self.current_annotation:
                     # Add point to existing annotation.
                     if self.create_type == 'polygon':
-                        self.current.addPoint(self.line[1])
-                        self.line[0] = self.current[-1]
-                        if self.current.isClosed():
+                        self.current_annotation.addPoint(self.current_line[1])
+                        self.current_line[0] = self.current_annotation[-1]
+                        if self.current_annotation.isClosed():
                             self.finalise()
                     elif self.create_type in ['rectangle', 'circle', 'line']:
-                        assert len(self.current.points) == 1
-                        self.current.points = self.line.points
+                        assert len(self.current_annotation.points) == 1
+                        self.current_annotation.points = self.current_line.points
                         self.finalise()
-                    elif self.create_type == 'linestrip':
-                        self.current.addPoint(self.line[1])
-                        self.line[0] = self.current[-1]
+                    elif self.create_type == 'polyline':
+                        self.current_annotation.addPoint(self.current_line[1])
+                        self.current_line[0] = self.current_annotation[-1]
                         if int(ev.modifiers()) == QtCore.Qt.ControlModifier:
                             self.finalise()
                 elif not self.is_out_of_pixmap(pos):
                     # Create new annotation.
-                    self.current = Annotation(annotation_type=self.create_type)
-                    self.current.addPoint(pos)
+                    self.current_annotation = Annotation(annotation_type=self.create_type)
+                    self.current_annotation.addPoint(pos)
                     if self.create_type == 'point':
                         self.finalise()
                     else:
                         if self.create_type == 'circle':
-                            self.current.annotation_type = 'circle'
-                        self.line.points = [pos, pos]
-                        self.setHiding()
-                        self.drawingPolygon.emit(True)
+                            self.current_annotation.annotation_type = 'circle'
+                        self.current_line.points = [pos, pos]
+                        self.is_canvas_creating_signal.emit(True)
                         self.update()
             else:
                 group_mode = (int(ev.modifiers()) == QtCore.Qt.ControlModifier)
@@ -688,7 +673,7 @@ class Canvas(QtWidgets.QWidget):
         delta = ev.angleDelta()
         if QtCore.Qt.ControlModifier == int(mods):
             # with Ctrl/Command key
-            # zoom
+            # zoom_action
             self.zoomRequest.emit(delta.y(), ev.pos())
         else:
             # scroll
@@ -700,9 +685,9 @@ class Canvas(QtWidgets.QWidget):
     def keyPressEvent(self, ev):
         key = ev.key()
         # Esc键，取消当前标记绘制
-        if key == QtCore.Qt.Key_Escape and self.current:
-            self.current = None
-            self.drawingPolygon.emit(False)
+        if key == QtCore.Qt.Key_Escape and self.current_annotation:
+            self.current_annotation = None
+            self.is_canvas_creating_signal.emit(False)
             self.update()
         # 回车键，完成当前标记绘制
         elif key == QtCore.Qt.Key_Shift and self.is_current_annotation_finalizable():
@@ -724,28 +709,29 @@ class Canvas(QtWidgets.QWidget):
         p.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
         p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
 
+        # 坐标系变换
         p.scale(self.scale, self.scale)
         p.translate(self.offsetToCenter())
 
         p.drawPixmap(0, 0, self.pixmap)
         Annotation.scale = self.scale
         # 标记的绘制
+        # 处理绘制完成的标记
         for annotation in self.annotations:
-            if (annotation.selected or not self._hideBackround) and \
-                    self.is_annotation_visible(annotation):
+            if self.is_annotation_visible(annotation):
                 annotation.fill = annotation.selected or annotation == self.hShape
                 annotation.paint(p)
-        if self.current:
-            self.current.paint(p)
-            self.line.paint(p)
+        if self.current_annotation:
+            self.current_annotation.paint(p)
+            self.current_line.paint(p)
         if self.selected_annotations_copy:
-            for s in self.selected_annotations_copy:
-                s.paint(p)
+            for selected_annotation in self.selected_annotations_copy:
+                selected_annotation.paint(p)
 
         if (self.fill_annotation and self.create_type == 'polygon' and
-                self.current is not None and len(self.current.points) >= 2):
-            drawing_annotation = self.current.copy()
-            drawing_annotation.addPoint(self.line[1])
+                self.current_annotation is not None and len(self.current_annotation.points) >= 2):
+            drawing_annotation = self.current_annotation.copy()
+            drawing_annotation.addPoint(self.current_line[1])
             drawing_annotation.fill = True
             drawing_annotation.fill_color.setAlpha(64)
             drawing_annotation.paint(p)

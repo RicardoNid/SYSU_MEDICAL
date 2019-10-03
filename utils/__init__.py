@@ -27,3 +27,5 @@ from .qt import struct
 from .qt import distance
 from .qt import distancetoline
 from .qt import fmtShortcut
+from .qt import enable_actions
+from .qt import disable_actions
