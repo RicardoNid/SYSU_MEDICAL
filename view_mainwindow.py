@@ -36,7 +36,6 @@ class LogicClass(QMainWindow, Ui_MainWindow):
 
         self.setupUi(self)
 
-
         self.zoomWidget = ZoomWidget()
         self.zoom_action = QWidgetAction(self)
         self.zoom_action.setDefaultWidget(self.zoomWidget)
@@ -72,30 +71,42 @@ class LogicClass(QMainWindow, Ui_MainWindow):
         self.setCentralWidget(self.canvas_area)
 
         # 从主窗口通过action对canvas进行操作
+        # 模式切换
         self.edit_mode_action.triggered.connect(self.edit_mode_slot)
-
         self.create_polygon_action.triggered.connect(self.create_mode_slot)
         self.create_rectangle_action.triggered.connect(self.create_mode_slot)
         self.create_circle_action.triggered.connect(self.create_mode_slot)
         self.create_polyline_action.triggered.connect(self.create_mode_slot)
         self.create_line_action.triggered.connect(self.create_mode_slot)
         self.create_point_action.triggered.connect(self.create_mode_slot)
-
+        # 撤销操作
         self.canvas_undo_action.triggered.connect(self.canvas_undo_slot)
-
+        # 复制选中的标记
+        self.copy_selected_annotations_action.triggered.connect(
+            self.canvas_widget.copy_selected_annotations)
+        # 删除选中的标记
+        self.delete_selected_annotataions_action.triggered.connect(
+            self.canvas_widget.delete_selected_annotations)
+        # 选中所有标记
+        self.select_all_annotations_action.triggered.connect(
+            self.canvas_widget.select_all_annotations)
+        # 分发actions到canvas菜单
+        actions = (self.create_polygon_action, self.create_rectangle_action)
+        utils.addActions(self.canvas_widget.menu, actions)
         # 接收canvas信号并作出响应
         self.canvas_widget.is_canvas_creating_signal.connect(
             self.is_canvas_creating_signal_slot)
-################################################################################
-# 下面的方法与canvas进行交互
-# 主窗口与canvas耦合的方式参见init_canvas
-#
-################################################################################
+
+    ################################################################################
+    # 下面的方法与canvas进行交互
+    # 主窗口与canvas耦合的方式参见init_canvas
+    #
+    ################################################################################
     def edit_mode_slot(self):
         '''进入编辑模式'''
         # 进入编辑模式前处理创建模式的残余工作
         if self.canvas_widget.is_current_annotation_finalizable():
-            self.canvas_widget.finalise()
+            self.canvas_widget.finalise_current_annotation()
         else:
             self.canvas_widget.current_annotation = None
             self.canvas_widget.repaint()

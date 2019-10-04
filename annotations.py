@@ -60,7 +60,6 @@ class Annotation(object):
         self.disease_specific_label = {}
 
         # 状态属性
-        self.selected = False
         self.fill = False
         self._closed = False
         self.annotation_type = annotation_type
@@ -201,10 +200,10 @@ class Annotation(object):
 
     # -----------进行绘制----------#
     # question: 需要学习qt painter机制？
-    def paint(self, painter):
+    def paint(self, painter, selected=False):
         if self.points:
             color = self.select_line_color \
-                if self.selected else self.line_color
+                if selected else self.line_color
 
             # 配置painter
             pen = QtGui.QPen(color)
@@ -254,7 +253,7 @@ class Annotation(object):
             painter.fillPath(vrtx_path, self.vertex_fill_color)
             if self.fill:
                 color = self.select_fill_color \
-                    if self.selected else self.fill_color
+                    if selected else self.fill_color
                 painter.fillPath(line_path, color)
 
     def drawVertex(self, path, i):

@@ -16,7 +16,6 @@ CURSOR_DRAW = QtCore.Qt.CrossCursor
 CURSOR_MOVE = QtCore.Qt.ClosedHandCursor
 CURSOR_GRAB = QtCore.Qt.OpenHandCursor
 
-
 class Canvas(QtWidgets.QWidget):
     # warning: 配置信号，信号需要是类变量，不能是对象变量
 
@@ -26,14 +25,14 @@ class Canvas(QtWidgets.QWidget):
 
     wlwwRequest = QtCore.pyqtSignal(float, float)
 
-
-    selectionChanged = QtCore.pyqtSignal(list)
     annotationMoved = QtCore.pyqtSignal()
 
-    # 通知主窗口有标记开始被创建/创建被完成或取消
+    # 通知有标记开始被创建/创建被完成或取消
     is_canvas_creating_signal = QtCore.pyqtSignal(bool)
-    # 通知主窗口由新标记被创建/复制而产生
-    new_shape_created = QtCore.pyqtSignal()
+    # 通知窗口中的标记被创建/复制/删除而变化
+    annotations_changed_signal = QtCore.pyqtSignal()
+    # 通知被选中的标记发生变化
+    selected_annotations_changed_signal = QtCore.pyqtSignal(list)
 
     edgeSelected = QtCore.pyqtSignal(bool)
 
@@ -41,61 +40,97 @@ class Canvas(QtWidgets.QWidget):
         # 用于判断邻近关系的阈值
         self.epsilon = kwargs.pop('epsilon', 10.0)
         super(Canvas, self).__init__(*args, **kwargs)
-
-        # 数据支持
-        # 支持当前交互模式判别
-        # 若_create_mode不为True，则为编辑模式
-        self._create_mode = False
-        self._create_type = 'polygon'
-        # 支持当前绘图设定查询
-        self._fill_annotation = False
-
-        self.movingShape = False
-        # 当前正在绘制的标记
-        self.current_annotation = None
-        self.line_color = QtGui.QColor(0, 0, 255)
-        self.current_line = Annotation(line_color=self.line_color)
-
-        # 当前窗口中的所有标记
-        self.annotations = []
-        self.annotataions_backups = []
-
-        # 当前选中的形状
-        self.selected_annotations = []
-        # question
-        # 当前选中形状的拷贝，进行复制和移动时先在其上进行操作
-        self.selected_annotations_copy = []
-
-
-
-        self.prevPoint = QtCore.QPoint()
-        # TODO: 补充注释
-        self.prevMovePoint = QtCore.QPoint()
-        self.prevprevMovePoint = None
-        self.offsets = QtCore.QPoint(), QtCore.QPoint()
-        self.scale = 1.0
-        # 记录和管理标记的可见性
-        self.annotations_visibility = {}
-
+        ################################################################################
+        # 支持图像存储和显示
+        ################################################################################
         self.pixmap = QtGui.QPixmap()
         self.pixmap = QtGui.QPixmap(
             r'C:\Users\lsfan\PycharmProjects\SYSU_LUNG\EVA.jpg')
-        # 高亮的annotation，顶点和边
+        ################################################################################
+        # 支持模式切换
+        ################################################################################
+        self._create_mode = False
+        self._create_type = 'polygon'
+        ################################################################################
+        # 支持标记创建
+        ################################################################################
+        # 当前正在被绘制的标记
+        self.current_annotation = None
+        self.line_color = QtGui.QColor(0, 0, 255)
+        self.virtual_annotation = Annotation(line_color=self.line_color)
+        ################################################################################
+        # 支持标记存储、恢复和显示
+        ################################################################################
+        # 画布上所有的标记（标记列表）
+        self.annotations = []
+        # 标记列表的备份
+        self.annotataions_backups = []
+        ################################################################################
+        # 支持标记选择，用in方法查询
+        ################################################################################
+        self.selected_annotations = []
+        ################################################################################
+        # 支持标记隐藏，用in方法查询
+        ################################################################################
+        self.invisable_annotations = []
+        ################################################################################
+        # 支持标记移动和复制
+        ################################################################################
+        self.selected_annotations_copy = []
+        # 实时记录是否处于标记移动状态
+        self.is_moving_annotations = False
+        # 记录标记被选择（移动开始）时
+        # 光标指向标记boundingbox左上，右下角的矢量，被用于计算移动过程中标记是否出界
+        self.offsets_to_bounding_rect = QtCore.QPoint(), QtCore.QPoint()
+        ################################################################################
+        # 支持顶点选择、移动和增加
+        ################################################################################
         self.hShape = None
         self.hVertex = None
         self.hEdge = None
-
-        self._painter = QtGui.QPainter()
+        ################################################################################
+        # 支持光标重绘
+        ################################################################################
         self._cursor = CURSOR_DEFAULT
-        # Menus:
-        # 0: right-click without selection and dragging of annotations
-        # 1: right-click with selection and dragging of annotations
-        self.menus = (QtWidgets.QMenu(), QtWidgets.QMenu())
-        # Set widget options.
+        ################################################################################
+        # 支持光标追踪
+        ################################################################################
+        # 在没有按下鼠标时也追踪光标位置，触发mouseMoveEvent
         self.setMouseTracking(True)
+        # 上一个被记录的位置，这个位置被用于追踪移动标记时光标的位置
+        self.prev_recorded_point = QtCore.QPoint()
+        # 当前光标的位置
+        self.current_moved_point = QtCore.QPoint()
+        # 上一次moveEvent时光标的位置
+        self.prev_moved_point = QtCore.QPoint()
+        # 两次moveEvent之间光标的位移量
+        self.movement_x = 0
+        self.movement_y = 0
+        ################################################################################
+        # 支持缩放
+        ################################################################################
+        self.scale = 1.0
+        self._painter = QtGui.QPainter()
+        # 右键菜单
+        self.menu = QtWidgets.QMenu()
+
+        self._fill_annotation = False
+
         self.setFocusPolicy(QtCore.Qt.WheelFocus)
 
-    '''下面的property属性定义了当前所处模式和模式改变方法'''
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+
+    @property
+    def fill_annotation(self):
+        return self._fill_annotation
+
+    @fill_annotation.setter
+    def fill_annotation(self, value):
+        self._fill_annotation = value
+
+    ################################################################################
+    # 支持模式切换
+    ################################################################################
     @property
     def create_mode(self):
         return self._create_mode
@@ -106,7 +141,7 @@ class Canvas(QtWidgets.QWidget):
         # 进入创建模式，将高亮和选中内容清空
         if value:
             self.unHighlight()
-            self.deSelectShape()
+            self.deselect_annotations()
 
     @property
     def create_type(self):
@@ -119,41 +154,35 @@ class Canvas(QtWidgets.QWidget):
             raise ValueError('Unsupported create_type: %s' % value)
         self._create_type = value
 
-    @property
-    def fill_annotation(self):
-        return self._fill_annotation
-
-    @fill_annotation.setter
-    def fill_annotation(self, value):
-        self._fill_annotation = value
-
-    '''下面的方法支持canvas_undo_action'''
+    ################################################################################
+    # 支持撤销操作
+    ################################################################################
     # 将最近的的10个标记列表（最近的10个标记状态）备份
     def store_annotations(self):
+        # print('store annotations')
         annotations_backup = []
         for annotation in self.annotations:
+            # insight: 进行备份时要使用copy方法
             annotations_backup.append(annotation.copy())
         if len(self.annotataions_backups) >= 10:
             self.annotataions_backups = self.annotataions_backups[-9:]
         self.annotataions_backups.append(annotations_backup)
-    
+
     # 当标记备份中的标记列表多于一个，标记状态是可恢复的
     @property
-    def is_annotation_restoreable(self):
+    def is_annotations_restoreable(self):
         if len(self.annotataions_backups) < 2:
             return False
         return True
 
-    # 从标记备份中取出一个标记列表，覆盖当前列表，重绘canvas完成恢复
+    # 从标记备份中取出一个标记列表，覆盖当前列表，重绘canvas，完成恢复
     def restore_annotations(self):
-        if not self.is_annotation_restoreable:
+        if not self.is_annotations_restoreable:
             return
         self.annotataions_backups.pop()
         annotations_backup = self.annotataions_backups.pop()
         self.annotations = annotations_backup
         self.selected_annotations = []
-        for annotation in self.annotations:
-            annotation.selected = False
         self.repaint()
 
     # 撤销最后一个被创建标记的最后一个点
@@ -163,7 +192,8 @@ class Canvas(QtWidgets.QWidget):
         self.current_annotation = self.annotations.pop()
         self.current_annotation.setOpen()
         if self.create_type in ['polygon', 'polyline']:
-            self.current_line.points = [self.current_annotation[-1], self.current_annotation[0]]
+            self.virtual_annotation.points = [self.current_annotation[-1],
+                                              self.current_annotation[0]]
         elif self.create_type in ['rectangle', 'line', 'circle']:
             self.current_annotation.points = self.current_annotation.points[0:1]
         elif self.create_type == 'point':
@@ -176,13 +206,15 @@ class Canvas(QtWidgets.QWidget):
             return
         self.current_annotation.popPoint()
         if len(self.current_annotation) > 0:
-            self.current_line[0] = self.current_annotation[-1]
+            self.virtual_annotation[0] = self.current_annotation[-1]
         else:
             self.current_annotation = None
             self.is_canvas_creating_signal.emit(False)
         self.repaint()
 
-    '''下面的事件和方法支持光标变化'''
+    ################################################################################
+    # 进入，离开和焦点事件，只用于支持光标变化
+    ################################################################################
     def enterEvent(self, ev):
         self.override_cursor(self._cursor)
 
@@ -196,162 +228,410 @@ class Canvas(QtWidgets.QWidget):
         print('focusout')
         self.restore_cursor()
 
-    # 根据传入的光标类型重绘光标
+    ################################################################################
+    # 支持刷新光标类型
+    ################################################################################
+    # 设置光标类型
     def override_cursor(self, cursor):
         self.restore_cursor()
         self._cursor = cursor
         QtWidgets.QApplication.setOverrideCursor(cursor)
 
-    # 将光标恢复原始状态
+    # 加载光标
     def restore_cursor(self):
         QtWidgets.QApplication.restoreOverrideCursor()
 
-    '''布尔条件判断'''
-    def is_annotation_visible(self, annotation):
-        return self.annotations_visibility.get(annotation, True)
-
-    def is_current_annotation_finalizable(self):
-        # 至少要有三个点才能结束手动结束绘制，两点完成的annotation类型会自动结束绘制
-        return self.create_mode and self.current_annotation and len(self.current_annotation) > 2
-
-    def is_close_enough(self, p1, p2):
-        return utils.distance(p1 - p2) < (self.epsilon / self.scale)
-
-    def is_out_of_pixmap(self, p):
-        w, h = self.pixmap.width(), self.pixmap.height()
-        return not (0 <= p.x() <= w - 1 and 0 <= p.y() <= h - 1)
-
-    '''下面的函数支持编辑模式下的选择功能'''
-
-    def endMove(self, copy):
-        assert self.selected_annotations and self.selected_annotations_copy
-        assert len(self.selected_annotations_copy) == len(self.selected_annotations)
-        if copy:
-            for i, annotation in enumerate(self.selected_annotations_copy):
-                self.annotations.append(annotation)
-                self.selected_annotations[i].selected = False
-                self.selected_annotations[i] = annotation
-        else:
-            for i, annotation in enumerate(self.selected_annotations_copy):
-                self.selected_annotations[i].points = annotation.points
-        self.selected_annotations_copy = []
-        self.repaint()
-        self.store_annotations()
-        return True
-
-    def deSelectShape(self):
-        if self.selected_annotations:
-            self.selectionChanged.emit([])
-            self.update()
-
-    def deleteSelected(self):
-        deleted_annotations = []
-        if self.selected_annotations:
-            for annotation in self.selected_annotations:
-                self.annotations.remove(annotation)
-                deleted_annotations.append(annotation)
-            self.store_annotations()
-            self.selected_annotations = []
-            self.update()
-        return deleted_annotations
-
-    def copySelectedShapes(self):
-        if self.selected_annotations:
-            self.selected_annotations_copy = [s.copy() for s in self.selected_annotations]
-            self.boundedShiftShapes(self.selected_annotations_copy)
-            self.endMove(copy=True)
-        return self.selected_annotations
-
-    '''下面的方法支持标记绘制'''
-    def finalise(self):
+    ################################################################################
+    # 支持标记创建
+    ################################################################################
+    # 完成当前标记的创建，不再增加点
+    def finalise_current_annotation(self):
         assert self.current_annotation
         self.current_annotation.close()
         self.annotations.append(self.current_annotation)
         self.store_annotations()
         self.current_annotation = None
         self.is_canvas_creating_signal.emit(False)
-        self.new_shape_created.emit()
+        self.annotations_changed_signal.emit()
         self.update()
 
-    def boundedMoveVertex(self, pos):
-        print('moving vertex')
-        index, annotation = self.hVertex, self.hShape
-        point = annotation[index]
-        if self.is_out_of_pixmap(pos):
-            pos = self.intersectionPoint(point, pos)
-        annotation.moveVertexBy(index, pos - point)
+    def is_current_annotation_finalizable(self):
+        # 至少要有三个点才能结束手动结束绘制，两点完成的annotation类型会自动结束绘制
+        return self.create_mode and self.current_annotation and len(
+            self.current_annotation) > 2
 
-    def boundedMoveShapes(self, annotations, pos):
-        print('moving shape')
+    # 键盘事件
+    def keyPressEvent(self, ev):
+        key = ev.key()
+        # Esc键，取消当前标记的创建
+        if key == QtCore.Qt.Key_Escape and self.current_annotation:
+            self.current_annotation = None
+            self.is_canvas_creating_signal.emit(False)
+            self.update()
+        # shift键，完成当前标记的创建
+        elif key == QtCore.Qt.Key_Shift and self.is_current_annotation_finalizable():
+            self.finalise_current_annotation()
+
+    ################################################################################
+    # 支持标记移动、复制和删除
+    ################################################################################
+    # 复制选中标记，用于从外部发起标记复制命令
+    def copy_selected_annotations(self):
+        if self.selected_annotations:
+            self.selected_annotations_copy = [selected_annotation.copy() for
+                                              selected_annotation
+                                              in
+                                              self.selected_annotations]
+            point = self.selected_annotations_copy[0][0]
+            offset = QtCore.QPoint(2.0, 2.0)
+            self.offsets_to_bounding_rect = QtCore.QPoint(), QtCore.QPoint()
+            self.prev_recorded_point = point
+            # 尝试向来两个不同方向移动副本
+            if not self.move_annotations(self.selected_annotations_copy,
+                                         point - offset):
+                self.move_annotations(self.selected_annotations_copy,
+                                      point + offset)
+            # 结束副本的移动，完成复制
+            self.end_copy_move(copy=True)
+        return self.selected_annotations
+
+    # 移动选中标记，这是一个随着鼠标移动被不断调用的过程，
+    # 在这个过程中
+    # 不断修改标记内容
+    # 不断判断是否出界，是否成功移动并给出反馈
+    def move_annotations(self, annotations, pos):
         if self.is_out_of_pixmap(pos):
-            return False  # No need to move
-        o1 = pos + self.offsets[0]
+            return False
+
+        o1 = pos + self.offsets_to_bounding_rect[0]
         if self.is_out_of_pixmap(o1):
             pos -= QtCore.QPoint(min(0, o1.x()), min(0, o1.y()))
-        o2 = pos + self.offsets[1]
+        o2 = pos + self.offsets_to_bounding_rect[1]
         if self.is_out_of_pixmap(o2):
             pos += QtCore.QPoint(min(0, self.pixmap.width() - o2.x()),
                                  min(0, self.pixmap.height() - o2.y()))
-        # XXX: The next line tracks the new position of the cursor
-        # relative to the annotation, but also results in making it
-        # a bit "shaky" when nearing the border and allows it to
-        # go outside of the annotation's area for some reason.
-        # self.calculateOffsets(self.selected_annotations, pos)
-        dp = pos - self.prevPoint
+        dp = pos - self.prev_recorded_point
         if dp:
             for annotation in annotations:
                 annotation.moveBy(dp)
-            self.prevPoint = pos
+            self.prev_recorded_point = pos
             return True
         return False
 
-    def selectShapes(self, annotations):
-        self.selectionChanged.emit(annotations)
+    # 移动顶点
+    def move_vertex(self, pos):
+        index, annotation = self.hVertex, self.hShape
+        point = annotation[index]
+        if self.is_out_of_pixmap(pos):
+            pos = self.relocate_outer_point_to_border(point, pos)
+        annotation.moveVertexBy(index, pos - point)
+
+    # 结束复制-移动
+    def end_copy_move(self):
+        assert self.selected_annotations and self.selected_annotations_copy
+        assert len(self.selected_annotations_copy) == len(
+            self.selected_annotations)
+        for i, annotation in enumerate(self.selected_annotations_copy):
+            self.annotations.append(annotation)
+            self.selected_annotations[i] = annotation
+        self.store_annotations()
+        self.annotations_changed_signal.emit()
+        self.selected_annotations_copy = []
+        self.repaint()
+        self.store_annotations()
+        return True
+
+    def delete_selected_annotations(self):
+        if self.selected_annotations:
+            for annotation in self.selected_annotations:
+                self.annotations.remove(annotation)
+            self.store_annotations()
+            self.selected_annotations = []
+            self.annotations_changed_signal.emit()
+            self.update()
+
+    # 判断点是否在图像上
+    def is_out_of_pixmap(self, p):
+        w, h = self.pixmap.width(), self.pixmap.height()
+        return not (0 <= p.x() <= w - 1 and 0 <= p.y() <= h - 1)
+
+    ################################################################################
+    # 支持标记和顶点选择
+    ################################################################################
+    # 将所有的标记置于选中状态，用于从外部发起标记选择命令
+    def select_all_annotations(self):
+        if self.create_mode:
+            return
+        for annotation in reversed(self.annotations):
+            self.selected_annotations.append(annotation)
+        self.selected_annotations_changed_signal.emit(self.selected_annotations)
         self.update()
 
-    def selectShapePoint(self, point, multiple_selection_mode):
-        """Select the first annotation created which contains this point."""
-        if self.hVertex is not None:  # A vertex is marked for selection.
+    # 将指定的标记置于选中状态，用于从外部发起标记选择命令
+    # 外部传入的标记列表中，标记的先后顺序应当与self.annotations一致
+    def select_specific_annotations(self, annotations):
+        if self.create_mode:
+            return
+        for annotation in reversed(annotations):
+            self.selected_annotations.append(annotation)
+        self.selected_annotations_changed_signal.emit(self.selected_annotations)
+        self.update()
+
+    # 如果当前有激活顶点，选中激活顶点，并取消对标记的选中
+    # 如果没有，将鼠标点击的标记置于选中状态，用于在画布上选择标记，将选择包含鼠标所在点的，最后被创建的标记，支持单选和复选
+    def select_pointed_vertex_or_annotation(self, point,
+                                            multiple_selection_mode):
+        if self.hVertex is not None:
             index, annotation = self.hVertex, self.hShape
             annotation.highlightVertex(index, annotation.MOVE_VERTEX)
+            self.deselect_annotations()
         else:
             for annotation in reversed(self.annotations):
-                if self.is_annotation_visible(annotation) and annotation.containsPoint(point):
-                    self.calculateOffsets(annotation, point)
+                if (annotation not in self.invisable_annotations) and \
+                        annotation.containsPoint(point):
+                    # 成功进行选中则重新计算offsets_to_bounding_rect
+                    self.calculate_offsets_to_bounding_rect(annotation, point)
                     if multiple_selection_mode:
                         if annotation not in self.selected_annotations:
-                            self.selectionChanged.emit(
+                            self.selected_annotations.append(annotation)
+                            self.selected_annotations_changed_signal.emit(
                                 self.selected_annotations + [annotation])
                     else:
-                        self.selectionChanged.emit([annotation])
-                    return
-        self.deSelectShape()
+                        self.selected_annotations = [annotation]
+                        self.selected_annotations_changed_signal.emit(
+                            [annotation])
+    # 取消所有选中标记的选中状态
+    def deselect_annotations(self):
+        if self.selected_annotations:
+            self.selected_annotations = []
+            self.selected_annotations_changed_signal.emit([])
+            self.update()
 
-    def addPointToEdge(self):
+    ################################################################################
+    # 鼠标的移动，按下和松开事件，这些事件支持了创建模式下标记的创建，编辑模式下标记的选中，
+    # 移动和复制-移动;顶点的选中和移动（即编辑标记）
+    ################################################################################
+    # 各种状态下的鼠标移动事件
+    def mouseMoveEvent(self, ev):
+        # 始终追踪光标位置和位移量，并刷新光标类型
+        pos = self.transformPos(ev.localPos())
+        self.prev_moved_point = self.current_moved_point
+        self.current_moved_point = pos
+        self.movement_x = self.current_moved_point.x() - self.prev_moved_point.x()
+        self.movement_y = self.current_moved_point.y() - self.prev_moved_point.y()
+        self.restore_cursor()
+
+        # 调整窗位窗宽:不在创建标记过程中时，无论在创建或是编辑模式
+        # 可以通过按住滚轮+ctrl+移动来调整窗位窗宽
+        mods = ev.modifiers()
+        if QtCore.Qt.ControlModifier == int(mods) and \
+                QtCore.Qt.MidButton & ev.buttons() and \
+                self.current_annotation is None:
+            print(self.movement_y, self.movement_x)
+            self.wlwwRequest.emit(-self.movement_y * 0.8, self.movement_x)
+            return
+
+        # 创建模式下,鼠标的移动带来显示的刷新
+        if self.create_mode:
+            self.virtual_annotation.annotation_type = self.create_type
+            self.override_cursor(CURSOR_DRAW)
+            if self.current_annotation is None:
+                return
+
+            color = self.line_color
+            # 处理出界点
+            if self.is_out_of_pixmap(pos):
+                pos = self.relocate_outer_point_to_border(
+                    self.current_annotation[-1], pos)
+            # 多边形类型下，当光标足够接近起点时，高亮提示
+            if self.create_type == 'polygon' and \
+                    len(self.current_annotation) > 1 and \
+                    self.is_close_enough(pos, self.current_annotation[0]):
+                pos = self.current_annotation[0]
+                color = self.current_annotation.line_color
+                self.override_cursor(CURSOR_POINT)
+                self.current_annotation.highlightVertex(0,
+                                                        Annotation.NEAR_VERTEX)
+            # 不同类型下，以不同方式刷新virtual_annotation来支持创建过程的显示
+            # 具体地说，virtual_annotation在光标所在点还没被添加到标记时暂时充当标记并被显示
+            if self.create_type in ['polygon', 'polyline']:
+                self.virtual_annotation[0] = self.current_annotation[-1]
+                self.virtual_annotation[1] = pos
+            elif self.create_type in ['rectangle', 'circle', 'line']:
+                self.virtual_annotation.points = [self.current_annotation[0], pos]
+            elif self.create_type == 'point':
+                self.virtual_annotation.points = [self.current_annotation[0]]
+            self.virtual_annotation.line_color = color
+            self.repaint()
+            # question
+            self.current_annotation.highlightClear()
+            return
+
+        # 编辑模式下
+        else:
+            # 按住右键移动进行copy-moving
+            if QtCore.Qt.RightButton & ev.buttons():
+                # 若已经创建副本，移动被选中标记的副本
+                if self.selected_annotations_copy and self.prev_recorded_point:
+                    self.override_cursor(CURSOR_MOVE)
+                    self.move_annotations(self.selected_annotations_copy, pos)
+                    self.repaint()
+                # 若还没有创建副本，创建被选中标记的副本
+                elif self.selected_annotations:
+                    self.selected_annotations_copy = \
+                        [selected_annotation.copy() for
+                         selected_annotation in self.selected_annotations]
+                    self.repaint()
+                return
+
+            # 按住左键移动进行标记/顶点的移动
+            if QtCore.Qt.LeftButton & ev.buttons():
+                if self.hVertex is not None:
+                    self.move_vertex(pos)
+                    self.repaint()
+                    self.is_moving_annotations = True
+                elif self.selected_annotations and self.prev_recorded_point:
+                    self.override_cursor(CURSOR_MOVE)
+                    self.move_annotations(self.selected_annotations, pos)
+                    self.repaint()
+                    self.is_moving_annotations = True
+                return
+
+            # 移动后悬停时
+            # - Highlight annotations
+            # - Highlight vertex
+            # Update annotation/vertex fill and tooltip value accordingly.
+            # TODO: 仔细阅读
+            # 左右键都没被按下，鼠标移动带来
+            #   1.hVertex,hEdge,hShape的刷新
+            #   2.进入标记内时显示填充颜色以帮助选择
+            #   3.悬停时显示提示以帮助操作
+            self.setToolTip("Image")
+            for annotation in reversed(
+                    [anno for anno in self.annotations if
+                     (anno not in self.invisable_annotations)]):
+                # Look for a nearby vertex to highlight. If that fails,
+                # check if we happen to be inside a annotation.
+                index = annotation.nearestVertex(pos, self.epsilon / self.scale)
+                index_edge = annotation.nearestEdge(pos, self.epsilon / self.scale)
+                if index is not None:
+                    if self.hVertex is not None:
+                        self.hShape.highlightClear()
+                    self.hVertex = index
+                    self.hShape = annotation
+                    self.hEdge = index_edge
+                    annotation.highlightVertex(index, annotation.MOVE_VERTEX)
+                    self.override_cursor(CURSOR_POINT)
+                    self.setToolTip("Click & drag to move point")
+                    self.setStatusTip(self.toolTip())
+                    self.update()
+                    break
+                elif annotation.containsPoint(pos):
+                    if self.hVertex is not None:
+                        self.hShape.highlightClear()
+                    self.hVertex = None
+                    self.hShape = annotation
+                    self.hEdge = index_edge
+                    self.setToolTip(
+                        "Click & drag to move annotation '%s'" % annotation.label)
+                    self.setStatusTip(self.toolTip())
+                    self.override_cursor(CURSOR_GRAB)
+                    self.update()
+                    break
+            else:
+                if self.hShape:
+                    self.hShape.highlightClear()
+                    self.update()
+                self.hVertex, self.hShape, self.hEdge = None, None, None
+            self.edgeSelected.emit(self.hEdge is not None)
+
+    # 各种状态下的鼠标按下事件
+    def mousePressEvent(self, ev):
+        pos = self.transformPos(ev.localPos())
+        # 按下左键时
+        if ev.button() == QtCore.Qt.LeftButton:
+            # 创建模式下，增加点到正在创建的标记，或是创建新标记
+            if self.create_mode:
+                if self.current_annotation:
+                    if self.create_type == 'polygon':
+                        self.current_annotation.addPoint(self.virtual_annotation[1])
+                        self.virtual_annotation[0] = self.current_annotation[-1]
+                        if self.current_annotation.isClosed():
+                            self.finalise_current_annotation()
+                    elif self.create_type in ['rectangle', 'circle', 'line']:
+                        assert len(self.current_annotation.points) == 1
+                        self.current_annotation.points = self.virtual_annotation.points
+                        self.finalise_current_annotation()
+                    elif self.create_type == 'polyline':
+                        self.current_annotation.addPoint(self.virtual_annotation[1])
+                        self.virtual_annotation[0] = self.current_annotation[-1]
+                        if int(ev.modifiers()) == QtCore.Qt.ControlModifier:
+                            self.finalise_current_annotation()
+                elif not self.is_out_of_pixmap(pos):
+                    self.current_annotation = Annotation(
+                        annotation_type=self.create_type)
+                    self.current_annotation.addPoint(pos)
+                    if self.create_type == 'point':
+                        self.finalise_current_annotation()
+                    else:
+                        if self.create_type == 'circle':
+                            self.current_annotation.annotation_type = 'circle'
+                        self.virtual_annotation.points = [pos, pos]
+                        self.is_canvas_creating_signal.emit(True)
+                        self.update()
+            # 编辑模式下，进行顶点或标记的选择
+            else:
+                group_mode = (int(ev.modifiers()) == QtCore.Qt.ControlModifier)
+                self.select_pointed_vertex_or_annotation(pos,
+                                                         multiple_selection_mode=group_mode)
+                self.prev_recorded_point = pos
+                self.repaint()
+
+        # 按下右键，编辑模式下，进行顶点或标记的选择
+        elif ev.button() == QtCore.Qt.RightButton and not self.create_mode:
+            group_mode = (int(ev.modifiers()) == QtCore.Qt.ControlModifier)
+            self.select_pointed_vertex_or_annotation(pos,
+                                                     multiple_selection_mode=group_mode)
+            self.prev_recorded_point = pos
+            self.repaint()
+
+    # 鼠标松开事件
+    def mouseReleaseEvent(self, ev):
+        # 松开右键时
+        #   1.如果有选中标记副本，完成复制-移动
+        #   2.如果没有，呼出菜单
+        if ev.button() == QtCore.Qt.RightButton:
+            self.restore_cursor()
+            if self.selected_annotations_copy:
+                self.end_copy_move()
+            else:
+                self.menu.exec_(self.mapToGlobal(ev.pos()))
+        # 松开左键时
+        #   1.如果有选中标记，重绘移动光标为抓取光标
+        #   2.如果之前正在移动标记，完成移动，进行备份
+        elif ev.button() == QtCore.Qt.LeftButton and self.selected_annotations:
+            self.override_cursor(CURSOR_GRAB)
+            if self.is_moving_annotations:
+                self.store_annotations()
+                self.is_moving_annotations = False
+
+    def is_close_enough(self, p1, p2):
+        return utils.distance(p1 - p2) < (self.epsilon / self.scale)
+
+    def add_point_to_edge(self):
         # 需要有一个选中的标记，一条选中的边和一个前置点
         if (self.hShape is None and
                 self.hEdge is None and
-                self.prevMovePoint is None):
+                self.current_moved_point is None):
             return
         annotation = self.hShape
         index = self.hEdge
-        point = self.prevMovePoint
+        point = self.current_moved_point
         annotation.insertPoint(index, point)
         annotation.highlightVertex(index, annotation.MOVE_VERTEX)
         self.hShape = annotation
         self.hVertex = index
         self.hEdge = None
-
-    # question: what for?
-    def boundedShiftShapes(self, annotations):
-        # Try to move in one direction, and if it fails in another.
-        # Give up if both fail.
-        point = annotations[0][0]
-        offset = QtCore.QPoint(2.0, 2.0)
-        self.offsets = QtCore.QPoint(), QtCore.QPoint()
-        self.prevPoint = point
-        if not self.boundedMoveShapes(annotations, point - offset):
-            self.boundedMoveShapes(annotations, point + offset)
 
     # ----------快捷计算----------#
 
@@ -369,18 +649,17 @@ class Canvas(QtWidgets.QWidget):
         y = (ah - h) / (2 * s) if ah > h else 0
         return QtCore.QPoint(x, y)
 
-    def calculateOffsets(self, annotation, point):
+    # 计算从点指向标记boundingbox左上，右下角的矢量，以QPoint表示
+    def calculate_offsets_to_bounding_rect(self, annotation, point):
         rect = annotation.boundingRect()
         x1 = rect.x() - point.x()
         y1 = rect.y() - point.y()
         x2 = (rect.x() + rect.width() - 1) - point.x()
         y2 = (rect.y() + rect.height() - 1) - point.y()
-        self.offsets = QtCore.QPoint(x1, y1), QtCore.QPoint(x2, y2)
+        self.offsets_to_bounding_rect = QtCore.QPoint(x1, y1), QtCore.QPoint(x2, y2)
 
-    def intersectionPoint(self, p1, p2):
-        # Cycle through each image edge in clockwise fashion,
-        # and find the one intersecting the current_annotation line segment.
-        # http://paulbourke.net/geometry/lineline2d/
+    # 处理创建标记时出界的点，将它重定位为virtual_annotation和pixmap边界的交点
+    def relocate_outer_point_to_border(self, p1, p2):
         size = self.pixmap.size()
         points = [(0, 0),
                   (size.width() - 1, 0),
@@ -466,7 +745,7 @@ class Canvas(QtWidgets.QWidget):
         self.repaint()
 
     def setShapeVisible(self, annotation, value):
-        self.annotations_visibility[annotation] = value
+        self.visable_annotations[annotation] = value
         self.repaint()
 
     def resetState(self):
@@ -474,198 +753,6 @@ class Canvas(QtWidgets.QWidget):
         self.pixmap = None
         self.annotataions_backups = []
         self.update()
-
-    # 各种状态下的鼠标移动事件
-    def mouseMoveEvent(self, ev):
-        """Update line with last point and current_annotation coordinates."""
-        # 始终追踪鼠标位置
-        pos = self.transformPos(ev.localPos())
-
-        self.prevMovePoint = pos
-        self.restore_cursor()
-
-        # 新建标记状态下的移动
-        if self.create_mode:
-            self.current_line.annotation_type = self.create_type
-
-            self.override_cursor(CURSOR_DRAW)
-            if not self.current_annotation:
-                return
-
-            color = self.line_color
-            if self.is_out_of_pixmap(pos):
-                # Don't allow the user to draw outside the pixmap.
-                # Project the point to the pixmap's edges.
-                pos = self.intersectionPoint(self.current_annotation[-1], pos)
-            elif len(self.current_annotation) > 1 and self.create_type == 'polygon' and \
-                    self.is_close_enough(pos, self.current_annotation[0]):
-                # Attract line to starting point and
-                # colorise to alert the user.
-                pos = self.current_annotation[0]
-                color = self.current_annotation.line_color
-                self.override_cursor(CURSOR_POINT)
-                self.current_annotation.highlightVertex(0, Annotation.NEAR_VERTEX)
-            if self.create_type in ['polygon', 'polyline']:
-                self.current_line[0] = self.current_annotation[-1]
-                self.current_line[1] = pos
-            elif self.create_type == 'rectangle':
-                self.current_line.points = [self.current_annotation[0], pos]
-                self.current_line.close()
-            elif self.create_type == 'circle':
-                self.current_line.points = [self.current_annotation[0], pos]
-                self.current_line.annotation_type = "circle"
-            elif self.create_type == 'line':
-                self.current_line.points = [self.current_annotation[0], pos]
-                self.current_line.close()
-            elif self.create_type == 'point':
-                self.current_line.points = [self.current_annotation[0]]
-                self.current_line.close()
-            self.current_line.line_color = color
-            self.repaint()
-            self.current_annotation.highlightClear()
-            return
-
-        # MYCODE: 增加通过按住ctrl和鼠标左键移动鼠标调整窗位窗宽的事件
-        # 编辑状态下按住ctrl的左键移动
-        if QtCore.Qt.LeftButton & ev.buttons():
-            mods = ev.modifiers()
-            if QtCore.Qt.ControlModifier == int(mods):
-                if self.prevprevMovePoint:
-                    delta_x = self.prevMovePoint.x() - self.prevprevMovePoint.x()
-                    delta_y = self.prevMovePoint.y() - self.prevprevMovePoint.y()
-                    self.wlwwRequest.emit(-delta_y * 0.8, delta_x)
-                self.prevprevMovePoint = self.prevMovePoint
-
-        # 编辑状态下的右键移动（copy-moving状态）
-        if QtCore.Qt.RightButton & ev.buttons():
-            if self.selected_annotations_copy and self.prevPoint:
-                self.override_cursor(CURSOR_MOVE)
-                self.boundedMoveShapes(self.selected_annotations_copy, pos)
-                self.repaint()
-            elif self.selected_annotations:
-                self.selected_annotations_copy = \
-                    [s.copy() for s in self.selected_annotations]
-                self.repaint()
-            return
-
-        # 标记/顶点的左键移动
-        self.movingShape = False
-        if QtCore.Qt.LeftButton & ev.buttons():
-            if self.hVertex is not None:
-                self.boundedMoveVertex(pos)
-                self.repaint()
-                self.movingShape = True
-            elif self.selected_annotations and self.prevPoint:
-                self.override_cursor(CURSOR_MOVE)
-                self.boundedMoveShapes(self.selected_annotations, pos)
-                self.repaint()
-                self.movingShape = True
-            return
-
-        # 移动后悬停时
-        # - Highlight annotations
-        # - Highlight vertex
-        # Update annotation/vertex fill and tooltip value accordingly.
-        self.setToolTip("Image")
-        for annotation in reversed(
-                [s for s in self.annotations if self.is_annotation_visible(s)]):
-            # Look for a nearby vertex to highlight. If that fails,
-            # check if we happen to be inside a annotation.
-            index = annotation.nearestVertex(pos, self.epsilon / self.scale)
-            index_edge = annotation.nearestEdge(pos, self.epsilon / self.scale)
-            if index is not None:
-                if self.hVertex is not None:
-                    self.hShape.highlightClear()
-                self.hVertex = index
-                self.hShape = annotation
-                self.hEdge = index_edge
-                annotation.highlightVertex(index, annotation.MOVE_VERTEX)
-                self.override_cursor(CURSOR_POINT)
-                self.setToolTip("Click & drag to move point")
-                self.setStatusTip(self.toolTip())
-                self.update()
-                break
-            elif annotation.containsPoint(pos):
-                if self.hVertex is not None:
-                    self.hShape.highlightClear()
-                self.hVertex = None
-                self.hShape = annotation
-                self.hEdge = index_edge
-                self.setToolTip(
-                    "Click & drag to move annotation '%s'" % annotation.label)
-                self.setStatusTip(self.toolTip())
-                self.override_cursor(CURSOR_GRAB)
-                self.update()
-                break
-        else:  # Nothing found, clear highlights, reset state.
-            if self.hShape:
-                self.hShape.highlightClear()
-                self.update()
-            self.hVertex, self.hShape, self.hEdge = None, None, None
-        self.edgeSelected.emit(self.hEdge is not None)
-
-    # 各种状态下的鼠标按键事件
-    def mousePressEvent(self, ev):
-        pos = self.transformPos(ev.localPos())
-        # 按下左键时
-        if ev.button() == QtCore.Qt.LeftButton:
-            if self.create_mode:
-                if self.current_annotation:
-                    # Add point to existing annotation.
-                    if self.create_type == 'polygon':
-                        self.current_annotation.addPoint(self.current_line[1])
-                        self.current_line[0] = self.current_annotation[-1]
-                        if self.current_annotation.isClosed():
-                            self.finalise()
-                    elif self.create_type in ['rectangle', 'circle', 'line']:
-                        assert len(self.current_annotation.points) == 1
-                        self.current_annotation.points = self.current_line.points
-                        self.finalise()
-                    elif self.create_type == 'polyline':
-                        self.current_annotation.addPoint(self.current_line[1])
-                        self.current_line[0] = self.current_annotation[-1]
-                        if int(ev.modifiers()) == QtCore.Qt.ControlModifier:
-                            self.finalise()
-                elif not self.is_out_of_pixmap(pos):
-                    # Create new annotation.
-                    self.current_annotation = Annotation(annotation_type=self.create_type)
-                    self.current_annotation.addPoint(pos)
-                    if self.create_type == 'point':
-                        self.finalise()
-                    else:
-                        if self.create_type == 'circle':
-                            self.current_annotation.annotation_type = 'circle'
-                        self.current_line.points = [pos, pos]
-                        self.is_canvas_creating_signal.emit(True)
-                        self.update()
-            else:
-                group_mode = (int(ev.modifiers()) == QtCore.Qt.ControlModifier)
-                self.selectShapePoint(pos, multiple_selection_mode=group_mode)
-                self.prevPoint = pos
-                self.repaint()
-
-        elif ev.button() == QtCore.Qt.RightButton and not self.create_mode:
-            group_mode = (int(ev.modifiers()) == QtCore.Qt.ControlModifier)
-            self.selectShapePoint(pos, multiple_selection_mode=group_mode)
-            self.prevPoint = pos
-            self.repaint()
-
-    # 鼠标松开事件
-    def mouseReleaseEvent(self, ev):
-        self.prevprevMovePoint = None
-        if ev.button() == QtCore.Qt.RightButton:
-            menu = self.menus[len(self.selected_annotations_copy) > 0]
-            self.restore_cursor()
-            if not menu.exec_(self.mapToGlobal(ev.pos())) \
-                    and self.selected_annotations_copy:
-                # Cancel the move by deleting the shadow copy.
-                self.selected_annotations_copy = []
-                self.repaint()
-        elif ev.button() == QtCore.Qt.LeftButton and self.selected_annotations:
-            self.override_cursor(CURSOR_GRAB)
-        if self.movingShape:
-            self.store_annotations()
-            self.annotationMoved.emit()
 
     # 鼠标滚轮事件
     def wheelEvent(self, ev):
@@ -681,24 +768,6 @@ class Canvas(QtWidgets.QWidget):
             self.scrollRequest.emit(delta.y(), QtCore.Qt.Vertical)
         ev.accept()
 
-    # 键盘事件
-    def keyPressEvent(self, ev):
-        key = ev.key()
-        # Esc键，取消当前标记绘制
-        if key == QtCore.Qt.Key_Escape and self.current_annotation:
-            self.current_annotation = None
-            self.is_canvas_creating_signal.emit(False)
-            self.update()
-        # 回车键，完成当前标记绘制
-        elif key == QtCore.Qt.Key_Shift and self.is_current_annotation_finalizable():
-            self.finalise()
-
-    # TODO: 探明绘图事件的触发条件
-    #  1. 窗口第一次显示
-    #  2。窗口大小变化
-    #  3. 窗口被遮挡又被显示
-    #  4. update()在Qt下一次处理事件时调用一次绘图事件
-    #  5. repaint()立刻调用一次绘图事件
     def paintEvent(self, event):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
@@ -718,31 +787,34 @@ class Canvas(QtWidgets.QWidget):
         # 标记的绘制
         # 处理绘制完成的标记
         for annotation in self.annotations:
-            if self.is_annotation_visible(annotation):
-                annotation.fill = annotation.selected or annotation == self.hShape
-                annotation.paint(p)
+            if annotation not in self.invisable_annotations:
+                annotation.fill = (
+                                          annotation in self.selected_annotations) or annotation == self.hShape
+                annotation.paint(p, selected=(
+                        annotation in self.selected_annotations))
+        # 处理正在绘制中的标记
         if self.current_annotation:
             self.current_annotation.paint(p)
-            self.current_line.paint(p)
+            self.virtual_annotation.paint(p)
+        # 处理复制/移动中的标记
         if self.selected_annotations_copy:
-            for selected_annotation in self.selected_annotations_copy:
-                selected_annotation.paint(p)
+            for selected_annotation_copy in self.selected_annotations_copy:
+                selected_annotation_copy.paint(p)
 
         if (self.fill_annotation and self.create_type == 'polygon' and
-                self.current_annotation is not None and len(self.current_annotation.points) >= 2):
+                self.current_annotation is not None and len(
+                    self.current_annotation.points) >= 2):
             drawing_annotation = self.current_annotation.copy()
-            drawing_annotation.addPoint(self.current_line[1])
+            drawing_annotation.addPoint(self.virtual_annotation[1])
             drawing_annotation.fill = True
             drawing_annotation.fill_color.setAlpha(64)
             drawing_annotation.paint(p)
-
         p.end()
 
     def unHighlight(self):
         if self.hShape:
             self.hShape.highlightClear()
         self.hVertex = self.hShape = None
-
 
 
 if __name__ == '__main__':
@@ -761,5 +833,5 @@ if __name__ == '__main__':
         app = QtWidgets.QApplication(sys.argv)
         window = QtWidgets.QMainWindow()
         window.setCentralWidget(Canvas())
-        window.show()
+        window.showMaximized()
         sys.exit(app.exec_())

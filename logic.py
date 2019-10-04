@@ -13,6 +13,14 @@ def undo_logic():
 '''
     )
 
+def selecting_logic():
+    print(
+'''
+选择操作的逻辑如下：
+
+'''
+    )
+
 def creating_logic():
     print(
 '''
@@ -28,6 +36,8 @@ def creating_logic():
     标记创建过程的连线显示由current_line维护
 '''
     )
+
+
 
 if __name__ == '__main__':
     undo_logic()

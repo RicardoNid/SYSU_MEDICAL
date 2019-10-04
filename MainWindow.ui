@@ -66,8 +66,9 @@
     <addaction name="separator"/>
     <addaction name="edit_mode_action"/>
     <addaction name="separator"/>
-    <addaction name="copy_annotation_action"/>
-    <addaction name="delete_annotataion_action"/>
+    <addaction name="select_all_annotations_action"/>
+    <addaction name="copy_selected_annotations_action"/>
+    <addaction name="delete_selected_annotataions_action"/>
     <addaction name="add_point_to_nearest_edge_action"/>
     <addaction name="edit_annotation_label_action"/>
     <addaction name="separator"/>
@@ -126,8 +127,8 @@
    <addaction name="separator"/>
    <addaction name="create_polygon_action"/>
    <addaction name="create_rectangle_action"/>
-   <addaction name="copy_annotation_action"/>
-   <addaction name="delete_annotataion_action"/>
+   <addaction name="copy_selected_annotations_action"/>
+   <addaction name="delete_selected_annotataions_action"/>
    <addaction name="canvas_undo_action"/>
    <addaction name="separator"/>
    <addaction name="zoom_in_action"/>
@@ -375,7 +376,7 @@
     <string>创建矩形标记</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+E</string>
+    <string>Ctrl+W</string>
    </property>
   </action>
   <action name="create_circle_action">
@@ -431,7 +432,7 @@
     <string>进入编辑模式，对标记进行编辑和诊断</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+R</string>
+    <string>Ctrl+E</string>
    </property>
   </action>
   <action name="canvas_undo_action">
@@ -476,28 +477,34 @@
     <string>启动/禁用标记保持，决定是否将当前图像标记复制到下一张打开的图像</string>
    </property>
   </action>
-  <action name="copy_annotation_action">
+  <action name="copy_selected_annotations_action">
    <property name="icon">
     <iconset>
      <normaloff>icons/copy.svg</normaloff>icons/copy.svg</iconset>
    </property>
    <property name="text">
-    <string>复制标记</string>
+    <string>复制选中的标记</string>
    </property>
    <property name="toolTip">
     <string>在当前选中的标记旁创建一个拷贝</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+C</string>
+   </property>
   </action>
-  <action name="delete_annotataion_action">
+  <action name="delete_selected_annotataions_action">
    <property name="icon">
     <iconset>
      <normaloff>icons/remove.svg</normaloff>icons/remove.svg</iconset>
    </property>
    <property name="text">
-    <string>删除标记</string>
+    <string>删除选中的标记</string>
    </property>
    <property name="toolTip">
     <string>删除当前选中的标记</string>
+   </property>
+   <property name="shortcut">
+    <string>Del</string>
    </property>
   </action>
   <action name="add_point_to_nearest_edge_action">
@@ -623,6 +630,17 @@
    </property>
    <property name="toolTip">
     <string>对当前序列进行肺结节检测，分类和特征提取</string>
+   </property>
+  </action>
+  <action name="select_all_annotations_action">
+   <property name="text">
+    <string>选择所有标记</string>
+   </property>
+   <property name="toolTip">
+    <string>将当前图像中所有的标记置于选中状态</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+A</string>
    </property>
   </action>
   <zorder>label_edit_dock</zorder>
