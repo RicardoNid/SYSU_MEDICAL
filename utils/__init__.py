@@ -29,3 +29,4 @@ from .qt import distancetoline
 from .qt import fmtShortcut
 from .qt import enable_actions
 from .qt import disable_actions
+from .qt import toggle_actions

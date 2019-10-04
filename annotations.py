@@ -58,6 +58,7 @@ class Annotation(object):
         self.label = label
         self.flags = flags
         self.disease_specific_label = {}
+        self.is_visable = True
 
         # 状态属性
         self.fill = False
@@ -129,7 +130,7 @@ class Annotation(object):
         self.points.insert(i, point)
 
     # -----------获取临近顶点和边----------#
-    def nearestVertex(self, point, epsilon):
+    def get_nearest_vertex(self, point, epsilon):
         '''返回annotation中离point最近的的顶点的序号，距离需要小于epsilon，若没有则返回None'''
         min_distance = float('inf')
         min_i = None
@@ -141,7 +142,7 @@ class Annotation(object):
                 min_i = i
         return min_i
 
-    def nearestEdge(self, point, epsilon):
+    def get_nearest_edge(self, point, epsilon):
         '''返回annotation中离point最近的的边的序号，距离需要小于epsilon，若没有则返回None'''
         min_distance = float('inf')
         post_i = None
@@ -275,11 +276,11 @@ class Annotation(object):
             assert False, "unsupported vertex annotation"
 
     # ----------高亮操作----------#
-    def highlightVertex(self, i, action):
+    def highlight_vertex(self, i, action):
         self._highlightIndex = i
         self._highlightMode = action
 
-    def highlightClear(self):
+    def clear_highlight_vertex(self):
         self._highlightIndex = None
 
     # ----------复制和移动操作----------#

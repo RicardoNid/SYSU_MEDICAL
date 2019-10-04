@@ -13,14 +13,13 @@ def undo_logic():
 '''
     )
 
-def selecting_logic():
+def keyboard_and_mouse_interact_logic():
     print(
 '''
-选择操作的逻辑如下：
+通过键鼠实现的用例如下：
 
 '''
     )
-
 def creating_logic():
     print(
 '''

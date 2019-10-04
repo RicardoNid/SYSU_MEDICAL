@@ -8,6 +8,7 @@ from PyQt5.QtGui import *
 from ui_MainWindow import *
 from canvas import Canvas
 import utils
+from functools import partial
 
 
 class ZoomWidget(QtWidgets.QSpinBox):
@@ -48,6 +49,7 @@ class LogicClass(QMainWindow, Ui_MainWindow):
 
         self.resize(1920, 1080)
         self.showMaximized()
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
     def init_docks(self):
         '''初始化的一部分，执行初始化子窗口并与其耦合的指令，单列一个函数以提升可读性'''
@@ -90,12 +92,20 @@ class LogicClass(QMainWindow, Ui_MainWindow):
         # 选中所有标记
         self.select_all_annotations_action.triggered.connect(
             self.canvas_widget.select_all_annotations)
+        # 增加点到邻近边
+        self.add_point_to_nearest_edge_action.triggered.connect(
+            self.canvas_widget.add_point_to_nearest_edge)
         # 分发actions到canvas菜单
-        actions = (self.create_polygon_action, self.create_rectangle_action)
+        actions = (self.create_polygon_action, self.create_rectangle_action, self.add_point_to_nearest_edge_action)
         utils.addActions(self.canvas_widget.menu, actions)
         # 接收canvas信号并作出响应
         self.canvas_widget.is_canvas_creating_signal.connect(
             self.is_canvas_creating_signal_slot)
+        # insight: What a beautiful line!
+        #   这里发生了非常美妙，非常python的事情！
+        self.canvas_widget.has_edge_tobe_added_signal.\
+            connect(lambda x: partial(
+            utils.toggle_actions, [self.add_point_to_nearest_edge_action])(x))
 
     ################################################################################
     # 下面的方法与canvas进行交互

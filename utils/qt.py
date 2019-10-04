@@ -49,6 +49,7 @@ def newAction(parent, text, slot=None, shortcut=None, icon=None,
     return a
 
 
+
 def addActions(widget, actions):
     for action in actions:
         if action is None:
@@ -95,3 +96,7 @@ def disable_actions(actions: list):
 def enable_actions(actions: list):
     for action in actions:
         action.setEnabled(True)
+
+def toggle_actions(actions: list, value: bool):
+    for action in actions:
+        action.setEnabled(value)
