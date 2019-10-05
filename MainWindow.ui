@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1024</width>
-    <height>768</height>
+    <width>1016</width>
+    <height>763</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1024</width>
+     <width>1016</width>
      <height>23</height>
     </rect>
    </property>
@@ -64,7 +64,7 @@
     <addaction name="select_line_color_action"/>
     <addaction name="select_fill_color_action"/>
     <addaction name="separator"/>
-    <addaction name="edit_mode_action"/>
+    <addaction name="toggle_mode_action"/>
     <addaction name="separator"/>
     <addaction name="select_all_annotations_action"/>
     <addaction name="copy_selected_annotations_action"/>
@@ -74,9 +74,9 @@
     <addaction name="separator"/>
     <addaction name="canvas_undo_action"/>
     <addaction name="separator"/>
-    <addaction name="set_keep_prev_action"/>
+    <addaction name="toggle_keep_prev_action"/>
     <addaction name="set_fill_annotation_action"/>
-    <addaction name="set_autosave_action"/>
+    <addaction name="toggle_autosave_action"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -88,7 +88,7 @@
     <addaction name="fit_window_action"/>
     <addaction name="fit_window_width_action"/>
     <addaction name="separator"/>
-    <addaction name="set_annotation_visibility_action"/>
+    <addaction name="toggle_all_annotatons_visibility_action"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -330,7 +330,7 @@
     <string>更改当前文件序列的标记输出文件夹</string>
    </property>
   </action>
-  <action name="set_autosave_action">
+  <action name="toggle_autosave_action">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -419,20 +419,15 @@
     <string>创建点标记</string>
    </property>
   </action>
-  <action name="edit_mode_action">
-   <property name="icon">
-    <iconset>
-     <normaloff>icons/unchecked.svg</normaloff>
-     <normalon>icons/checked.svg</normalon>icons/unchecked.svg</iconset>
-   </property>
+  <action name="toggle_mode_action">
    <property name="text">
-    <string>进入编辑模式</string>
+    <string>切换创建/编辑模式</string>
    </property>
    <property name="toolTip">
-    <string>进入编辑模式，对标记进行编辑和诊断</string>
+    <string>切换创建/编辑模式，总是切换到和当前不同的模式</string>
    </property>
    <property name="shortcut">
-    <string>Ctrl+E</string>
+    <string>Ctrl+Tab</string>
    </property>
   </action>
   <action name="canvas_undo_action">
@@ -466,7 +461,7 @@
     <string>选择创建标记时填充的颜色</string>
    </property>
   </action>
-  <action name="set_keep_prev_action">
+  <action name="toggle_keep_prev_action">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -515,12 +510,12 @@
     <string>向距离指针最近的边增加一个点</string>
    </property>
   </action>
-  <action name="set_annotation_visibility_action">
+  <action name="toggle_all_annotatons_visibility_action">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>标记可见</string>
+    <string>显示/隐藏所有标记</string>
    </property>
    <property name="toolTip">
     <string>显示/隐藏所有标记</string>
@@ -554,6 +549,9 @@
    </property>
   </action>
   <action name="fit_window_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>icons/fit_window.svg</normaloff>icons/fit_window.svg</iconset>
@@ -566,6 +564,9 @@
    </property>
   </action>
   <action name="fit_window_width_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>适合窗口宽度</string>
    </property>
@@ -641,6 +642,14 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+A</string>
+   </property>
+  </action>
+  <action name="hide_selected_annotation_action">
+   <property name="text">
+    <string>隐藏标记</string>
+   </property>
+   <property name="toolTip">
+    <string>隐藏当前被单选选中的标记</string>
    </property>
   </action>
   <zorder>label_edit_dock</zorder>

@@ -49,6 +49,9 @@ def newAction(parent, text, slot=None, shortcut=None, icon=None,
     return a
 
 
+def labelValidator():
+    return QtGui.QRegExpValidator(QtCore.QRegExp(r'^[^ \t].+'), None)
+
 
 def addActions(widget, actions):
     for action in actions:
@@ -58,15 +61,6 @@ def addActions(widget, actions):
             widget.addMenu(action)
         else:
             widget.addAction(action)
-
-
-def labelValidator():
-    return QtGui.QRegExpValidator(QtCore.QRegExp(r'^[^ \t].+'), None)
-
-
-class struct(object):
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
 
 
 def distance(p):

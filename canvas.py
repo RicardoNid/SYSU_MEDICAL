@@ -24,15 +24,17 @@ class Canvas(QtWidgets.QWidget):
     # warning: 配置信号，信号需要是类变量，不能是对象变量
     '''操作请求，希望主窗口实现canvas所需要的操作'''
     # 缩放和滚动的请求，请求主窗口在scrollArea上操作
-    zoomRequest = QtCore.pyqtSignal(int, QtCore.QPoint)
-    scrollRequest = QtCore.pyqtSignal(int, int)
+    zoom_request = QtCore.pyqtSignal(int, QtCore.QPoint)
+    scroll_request = QtCore.pyqtSignal(int, int)
     # 调整窗位窗宽的请求，请求主窗口重新生成pixmap传入
-    wlwwRequest = QtCore.pyqtSignal(float, float)
+    wlww_request = QtCore.pyqtSignal(float, float)
     '''数据池变化通知，希望主窗口在关联视图上响应'''
     # 通知标记列表因有标记被创建/复制/删除而变化
     annotations_changed_signal = QtCore.pyqtSignal()
     # 通知被选中的标记发生变化
     selected_annotations_changed_signal = QtCore.pyqtSignal(list)
+    # 通知标记可见性发生变化
+    annotations_visibility_changed_signal = QtCore.pyqtSignal()
     '''可用性和状态变化通知，希望主窗口在action可用性上响应'''
     # 通知现在处于标记创建过程中
     is_canvas_creating_signal = QtCore.pyqtSignal(bool)
@@ -46,10 +48,18 @@ class Canvas(QtWidgets.QWidget):
         ################################################################################
         # 支持图像存储和显示
         ################################################################################
-        # 默认加载一张空白pixmap，使它能够作为独立
         self.pixmap = QtGui.QPixmap()
-        # self.pixmap = QtGui.QPixmap(
-        #     r'C:\Users\lsfan\PycharmProjects\SYSU_LUNG\EVA.jpg')
+        self.pixmap = QtGui.QPixmap(
+            r'C:\Users\lsfan\PycharmProjects\SYSU_LUNG\C95atmosphereREBOOT_16.jpg')
+        ################################################################################
+        # 支持模式提示图标绘制
+        ################################################################################
+        self.mode_icon_opacity = 0.0
+        self.has_reached_mode_icon_opacity_peak  = False
+        self.mode_icon_timer = QtCore.QTimer()
+        self.mode_icon_timer.timeout.connect(self.change_mode_icon_opacity)
+        self.create_mode_icon = QtGui.QPixmap(r'icons/create_mode.svg')
+        self.edit_mode_icon = QtGui.QPixmap(r'icons/edit_mode.svg')
         ################################################################################
         # 支持模式切换
         ################################################################################
@@ -101,9 +111,12 @@ class Canvas(QtWidgets.QWidget):
         self.prev_recorded_point = QtCore.QPoint()
         # 当前光标的位置
         self.current_moved_point = QtCore.QPoint()
+        self.glo_current_moved_point = QtCore.QPoint()
         # 上一次moveEvent时光标的位置
         self.prev_moved_point = QtCore.QPoint()
+        self.glo_prev_moved_point = QtCore.QPoint()
         # 两次moveEvent之间光标的位移量
+        # 采用全局位置计算，保证其反映鼠标位移量，而非在画布上位置的位移量
         self.movement_x = 0
         self.movement_y = 0
         ################################################################################
@@ -112,8 +125,9 @@ class Canvas(QtWidgets.QWidget):
         self.scale = 1.0
         self._painter = QtGui.QPainter()
         # 右键菜单
-        self.menu = QtWidgets.QMenu()
-
+        self.edit_menu = QtWidgets.QMenu()
+        self.create_menu = QtWidgets.QMenu()
+        # TODO: 处理fill_annotation相关内容
         self._fill_annotation = False
         self.setFocusPolicy(QtCore.Qt.ClickFocus)
 
@@ -134,11 +148,24 @@ class Canvas(QtWidgets.QWidget):
 
     @create_mode.setter
     def create_mode(self, value):
-        self._create_mode = value
-        # 进入创建模式，将高亮和选中内容清空
+        '''变更模式的工作由setter处理，对调用者隐藏'''
+        # 进入创建模式前处理编辑模式的残余工作
         if value:
+            if self._create_mode:
+                return
             self.unhighlight_all()
             self.deselect_annotations()
+        # 进入编辑模式前处理创建模式的残余工作
+        else:
+            if not self._create_mode:
+                return
+            if self.is_current_annotation_finalizable():
+                self.finalise_current_annotation()
+            else:
+                self.current_annotation = None
+                self.repaint()
+        self._create_mode = value
+        self.mode_icon_timer.start(25)
 
     def unhighlight_all(self):
         if self.hShape:
@@ -188,8 +215,9 @@ class Canvas(QtWidgets.QWidget):
         self.selected_annotations = []
         self.repaint()
 
+    # TODO: last_point, last_line的命名和功能划分令人迷惑，进行优化
     # 撤销最后一个被创建标记的最后一个点
-    def undoLastLine(self):
+    def undo_last_line(self):
         if len(self.annotations) == 0:
             return
         self.current_annotation = self.annotations.pop()
@@ -201,10 +229,11 @@ class Canvas(QtWidgets.QWidget):
             self.current_annotation.points = self.current_annotation.points[0:1]
         elif self.create_type == 'point':
             self.current_annotation = None
-        self.is_canvas_creating_signal.emit(True)
+        self.is_canvas_creating_signal.emit(bool(self.current_annotation))
+        self.repaint()
 
     # 撤销当前被创建标记的最后一个点
-    def undoLastPoint(self):
+    def undo_last_point(self):
         if not self.current_annotation or self.current_annotation.isClosed():
             return
         self.current_annotation.popPoint()
@@ -214,6 +243,20 @@ class Canvas(QtWidgets.QWidget):
             self.current_annotation = None
             self.is_canvas_creating_signal.emit(False)
         self.repaint()
+
+    def undo(self):
+        '''根据当前canvas状态决定撤销操作应当如何被理解'''
+        # 创建模式下
+        if self.canvas_widget.create_mode:
+            # （上一个）标记创建已经完成，撤销已完成标记的最后一个点
+            if not self.canvas_widget.current_annotation:
+                self.canvas_widget.undo_last_line()
+            # 有标记正在被创建，撤销当前标记的最后一个点
+            else:
+                self.canvas_widget.undo_last_point()
+        # 编辑模式下
+        else:
+            self.canvas_widget.restore_annotations()
 
     ################################################################################
     # 进入，离开和焦点事件，只用于支持刷新光标类型
@@ -297,7 +340,7 @@ class Canvas(QtWidgets.QWidget):
                 [selected_annotation.copy() for
                 selected_annotation in self.selected_annotations]
             point = self.selected_annotations_copy[0][0]
-            offset = QtCore.QPoint(2.0, 2.0)
+            offset = QtCore.QPoint(10, 10)
             self.offsets_to_bounding_rect = QtCore.QPoint(), QtCore.QPoint()
             self.prev_recorded_point = point
             # 尝试向来两个不同方向移动副本
@@ -435,19 +478,31 @@ class Canvas(QtWidgets.QWidget):
         pos = self.transform_pos(ev.localPos())
         self.prev_moved_point = self.current_moved_point
         self.current_moved_point = pos
-        self.movement_x = self.current_moved_point.x() - self.prev_moved_point.x()
-        self.movement_y = self.current_moved_point.y() - self.prev_moved_point.y()
+        glo_pos = ev.globalPos()
+        self.glo_prev_moved_point = self.glo_current_moved_point
+        self.glo_current_moved_point = glo_pos
+        self.movement_x = self.glo_current_moved_point.x() - self.glo_prev_moved_point.x()
+        self.movement_y = self.glo_current_moved_point.y() - self.glo_prev_moved_point.y()
         self.restore_cursor()
 
         # 调整窗位窗宽:不在创建标记过程中时，无论在创建或是编辑模式
         # 可以通过按住滚轮+ctrl+移动来调整窗位窗宽
         mods = ev.modifiers()
         if QtCore.Qt.ControlModifier == int(mods) and \
-                QtCore.Qt.MidButton & ev.buttons() and \
-                self.current_annotation is None:
-            print(self.movement_y, self.movement_x)
-            self.wlwwRequest.emit(-self.movement_y * 0.8, self.movement_x)
+                QtCore.Qt.MidButton & ev.buttons():
+            # 窗位窗宽的变换并不是空间变换，只是用户需要一个快捷方式，才使用鼠标移动来交互
+            # 实际使用中，窗位，窗宽的调整分开进行，分别通过上下/左右移动完成
+            # 因此在发送位移时，保留主要方向位移，抑制次要方向位移
+            if abs(self.movement_y) > abs(self.movement_x):
+                self.wlww_request.emit(-self.movement_y, 0)
+            else:
+                self.wlww_request.emit(0, self.movement_x)
             return
+        # 可以通过按住滚轮+移动来移动画布
+        if QtCore.Qt.MidButton & ev.buttons():
+            self.override_cursor(CURSOR_GRAB)
+            self.scroll_request.emit(self.movement_x * 0.5, QtCore.Qt.Horizontal)
+            self.scroll_request.emit(self.movement_y * 0.5, QtCore.Qt.Vertical)
 
         # 创建模式下,鼠标的移动带来显示的刷新
         if self.create_mode:
@@ -455,7 +510,6 @@ class Canvas(QtWidgets.QWidget):
             self.override_cursor(CURSOR_DRAW)
             if self.current_annotation is None:
                 return
-
             color = self.line_color
             # 处理出界点
             if self.is_out_of_pixmap(pos):
@@ -480,8 +534,8 @@ class Canvas(QtWidgets.QWidget):
             elif self.create_type == 'point':
                 self.virtual_annotation.points = [self.current_annotation[0]]
             self.virtual_annotation.line_color = color
+            # question: 创建模式下每次mouseMoveEvent都repaint合理吗？
             self.repaint()
-            # question
             self.current_annotation.clear_highlight_vertex()
             return
 
@@ -535,9 +589,6 @@ class Canvas(QtWidgets.QWidget):
                     self.override_cursor(CURSOR_POINT)
                     self.update()
                     break
-                # FIXME: 当前策略下存在问题
-                #   1.高亮和选择的对象不一致
-                #   2.
                 elif annotation.containsPoint(pos):
                     if self.hVertex is not None:
                         self.hShape.clear_highlight_vertex()
@@ -559,7 +610,9 @@ class Canvas(QtWidgets.QWidget):
                     self.hShape.clear_highlight_vertex()
                     self.update()
                 self.hVertex, self.hShape, self.hEdge = None, None, None
-            # 实时上报insert_point_to_nearest_edge的可用性
+            # 通过光标重绘说明add_point_to_nearest_edge的可用性
+            if self.hEdge and not self.hVertex:
+                self.override_cursor(CURSOR_DRAW)
             self.has_edge_tobe_added_signal.emit(self.hEdge is not None)
 
     # 鼠标按下事件
@@ -596,21 +649,31 @@ class Canvas(QtWidgets.QWidget):
                         self.virtual_annotation.points = [pos, pos]
                         self.is_canvas_creating_signal.emit(True)
                         self.update()
-            # 编辑模式下，进行顶点或标记的选择
+            # 编辑模式下，进行顶点的添加，顶点或标记的选择
             else:
+                # 当顶点的添加可用,且顶点的选择不可用时,进行顶点的添加
+                if self.hEdge and not self.hVertex:
+                    self.add_point_to_nearest_edge()
+                    self.repaint()
+                    return
+                # 否则进行顶点或标记的选择
                 group_mode = (int(ev.modifiers()) == QtCore.Qt.ControlModifier)
                 self.select_pointed_vertex_or_annotation(pos,
                                                          multiple_selection_mode=group_mode)
                 self.prev_recorded_point = pos
                 self.repaint()
-
+        # question: 考虑右键选中的利弊
+        #   pros: 在进行copy-moving和呼出菜单处理选中标记时不需要先用左键选中，更加连贯
+        #   cons: 在想要呼出菜单时只要进行移动就会触发copy-moving，很容易误操作
+        #         在多选之后必须按住ctrl才能在保持多选状态的情况下呼出右键菜单，很容易误操作
+        #         ！！而且是一个不容易想到的操作，用户很可能以为不能对多选项使用菜单，或是程序有误
         # 按下右键，编辑模式下，进行顶点或标记的选择
-        elif ev.button() == QtCore.Qt.RightButton and not self.create_mode:
-            group_mode = (int(ev.modifiers()) == QtCore.Qt.ControlModifier)
-            self.select_pointed_vertex_or_annotation(pos,
-                                                     multiple_selection_mode=group_mode)
-            self.prev_recorded_point = pos
-            self.repaint()
+        # elif ev.button() == QtCore.Qt.RightButton and not self.create_mode:
+        #     group_mode = (int(ev.modifiers()) == QtCore.Qt.ControlModifier)
+        #     self.select_pointed_vertex_or_annotation(pos,
+        #                                              multiple_selection_mode=group_mode)
+        #     self.prev_recorded_point = pos
+        #     self.repaint()
 
     # 鼠标松开事件
     def mouseReleaseEvent(self, ev):
@@ -622,7 +685,19 @@ class Canvas(QtWidgets.QWidget):
             if self.selected_annotations_copy:
                 self.end_copy_move()
             else:
-                self.menu.exec_(self.mapToGlobal(ev.pos()))
+                # 创建模式下，仅当前标记创建完成后才呼出菜单
+                if self.create_mode and self.current_annotation is None:
+                    self.create_menu.exec_(self.mapToGlobal(ev.pos()))
+                # 编辑模式下，仅在有高亮标记时才呼出菜单（仅在光标在标记内部时）
+                elif not self.create_mode:
+                    if not self.hShape:
+                        return
+                    # 高亮标记已被选中，则不改变选中内容，否则，选中高亮标记
+                    if self.hShape in self.selected_annotations:
+                        pass
+                    else:
+                        self.selected_annotations = [self.hShape]
+                    self.edit_menu.exec_(self.mapToGlobal(ev.pos()))
         # 松开左键时
         #   1.如果有选中标记，重绘移动光标为抓取光标
         #   2.如果之前正在移动标记，完成移动，进行备份
@@ -648,14 +723,15 @@ class Canvas(QtWidgets.QWidget):
     def wheelEvent(self, ev):
         mods = ev.modifiers()
         delta = ev.angleDelta()
+        # 按住ctrl时滚动滚轮进行缩放
         if QtCore.Qt.ControlModifier == int(mods):
-            # with Ctrl/Command key
-            # zoom_action
-            self.zoomRequest.emit(delta.y(), ev.pos())
+            self.zoom_request.emit(delta.y(), ev.pos())
+            self.adjustSize()
+        # 直接滚动滚轮进行移动（只能进行纵向移动）
         else:
-            # scroll
-            self.scrollRequest.emit(delta.x(), QtCore.Qt.Horizontal)
-            self.scrollRequest.emit(delta.y(), QtCore.Qt.Vertical)
+            self.scroll_request.emit(delta.x(), QtCore.Qt.Horizontal)
+            self.scroll_request.emit(delta.y(), QtCore.Qt.Vertical)
+        # warning: 当wheelEvent置accept时，才会被所在控件接收，否则将被发送给父控件
         ev.accept()
 
     ################################################################################
@@ -737,7 +813,7 @@ class Canvas(QtWidgets.QWidget):
                 yield d, i, (x, y)
 
     ################################################################################
-    # question: scrollArea需要？
+    # 支持缩放：question 在内部实现缩放？
     ################################################################################
     def sizeHint(self):
         return self.minimumSizeHint()
@@ -766,19 +842,6 @@ class Canvas(QtWidgets.QWidget):
         self.repaint()
 
     ################################################################################
-    # 支持编辑标记可见性
-    ################################################################################
-    def set_selected_annotations_visable(self, annotations, value):
-        for annotation in annotations:
-            annotation.is_visable = value
-        self.repaint()
-
-    def resetState(self):
-        self.restore_cursor()
-        self.pixmap = None
-        self.annotataions_backups = []
-        self.update()
-    ################################################################################
     # 支持canvas中一切的绘制，请仔细了解数据池中各个要素被绘制的逻辑
     ################################################################################
     def paintEvent(self, event):
@@ -794,8 +857,9 @@ class Canvas(QtWidgets.QWidget):
         # 坐标系变换
         p.scale(self.scale, self.scale)
         p.translate(self.caculate_offset_to_center())
-
+        # 绘制图像
         p.drawPixmap(0, 0, self.pixmap)
+
         Annotation.scale = self.scale
         # 标记的绘制
         # 处理绘制完成的标记
@@ -822,7 +886,56 @@ class Canvas(QtWidgets.QWidget):
             drawing_annotation.fill = True
             drawing_annotation.fill_color.setAlpha(64)
             drawing_annotation.paint(p)
+
+        # 绘制模式提示图标
+        if self.mode_icon_opacity >= 0.0:
+            p.setOpacity(self.mode_icon_opacity)
+            if self.create_mode:
+                p.drawPixmap(0, 0, self.create_mode_icon)
+            else:
+                p.drawPixmap(0, 0, self.edit_mode_icon)
+
         p.end()
+
+    def change_mode_icon_opacity(self):
+        '''模式提示图标绘制，paintEvent的一部分，比较复杂，单列一个函数以提升可读性'''
+        if not self.has_reached_mode_icon_opacity_peak:
+            self.mode_icon_opacity += 0.1
+            if self.mode_icon_opacity >= 1.0:
+                self.has_reached_mode_icon_opacity_peak = True
+        else:
+            self.mode_icon_opacity -= 0.1
+            if self.mode_icon_opacity <= 0.0:
+                self.has_reached_mode_icon_opacity_peak = False
+                self.mode_icon_timer.stop()
+        self.repaint()
+
+    ################################################################################
+    # 标记可见性修改
+    ################################################################################
+    def set_selected_annotations_visibility(self, value: bool) -> None:
+        '''修改选中标记的可见性'''
+        for annotation in self.selected_annotations:
+            annotation.is_visable = value
+        self.annotations_visibility_changed_signal.emit()
+        self.selected_annotations = []
+        self.store_annotations()
+        self.repaint()
+
+    def set_all_annotations_visibility(self, value: bool) -> None:
+        '''修改所有标记的可见性'''
+        for annotation in self.annotations:
+            annotation.is_visable = value
+        self.annotations_visibility_changed_signal.emit()
+        self.selected_annotations = []
+        self.store_annotations()
+        self.repaint()
+
+    def resetState(self):
+        self.restore_cursor()
+        self.pixmap = None
+        self.annotataions_backups = []
+        self.update()
 
 if __name__ == '__main__':
     import sys
