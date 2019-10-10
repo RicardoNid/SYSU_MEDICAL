@@ -137,7 +137,7 @@
    <addaction name="fit_window_width_action"/>
    <addaction name="separator"/>
   </widget>
-  <widget class="QDockWidget" name="annotation_list_dock">
+  <widget class="QDockWidget" name="annotations_list_dock">
    <property name="sizePolicy">
     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
      <horstretch>0</horstretch>
@@ -653,7 +653,7 @@
    </property>
   </action>
   <zorder>label_edit_dock</zorder>
-  <zorder>annotation_list_dock</zorder>
+  <zorder>annotations_list_dock</zorder>
   <zorder>series_list_dock</zorder>
   <zorder>dataset_tree_dock</zorder>
  </widget>

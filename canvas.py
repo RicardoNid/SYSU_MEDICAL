@@ -30,7 +30,7 @@ class Canvas(QtWidgets.QWidget):
     wlww_request = QtCore.pyqtSignal(float, float)
     '''数据池变化通知，希望主窗口在关联视图上响应'''
     # 通知标记列表因有标记被创建/复制/删除而变化
-    annotations_changed_signal = QtCore.pyqtSignal()
+    annotations_changed_signal = QtCore.pyqtSignal(list)
     # 通知被选中的标记发生变化
     selected_annotations_changed_signal = QtCore.pyqtSignal(list)
     # 通知标记可见性发生变化
@@ -291,7 +291,7 @@ class Canvas(QtWidgets.QWidget):
         self.store_annotations()
         self.current_annotation = None
         self.is_canvas_creating_signal.emit(False)
-        self.annotations_changed_signal.emit()
+        self.annotations_changed_signal.emit(self.annotations)
         self.update()
 
     def is_current_annotation_finalizable(self):
@@ -384,7 +384,7 @@ class Canvas(QtWidgets.QWidget):
             self.annotations.append(annotation)
             self.selected_annotations[i] = annotation
         self.store_annotations()
-        self.annotations_changed_signal.emit()
+        self.annotations_changed_signal.emit(self.annotations)
         self.selected_annotations_copy = []
         self.repaint()
         self.store_annotations()
@@ -396,7 +396,7 @@ class Canvas(QtWidgets.QWidget):
                 self.annotations.remove(annotation)
             self.store_annotations()
             self.selected_annotations = []
-            self.annotations_changed_signal.emit()
+            self.annotations_changed_signal.emit(self.annotations)
             self.update()
 
     # 判断点是否在图像上

@@ -12,7 +12,7 @@ import math
 from qtpy import QtCore
 from qtpy import QtGui
 
-import labelme.utils
+import utils
 
 # TODO(unknown):
 # - [opt] Store paths instead of creating new ones at each paint.
@@ -55,8 +55,6 @@ class Annotation(object):
                  flags=None):
         # 数据属性：点，标签（只能有一个）和标志（可以有多个）
         self.points = []
-        self.label = label
-        self.flags = flags
         self.disease_specific_label = {}
         self.is_visable = True
 
@@ -136,7 +134,7 @@ class Annotation(object):
         min_i = None
         for i, p in enumerate(self.points):
             # FIXME: 想办法替代distance方法
-            dist = labelme.utils.distance(p - point)
+            dist = utils.distance(p - point)
             if dist <= epsilon and dist < min_distance:
                 min_distance = dist
                 min_i = i
@@ -148,7 +146,7 @@ class Annotation(object):
         post_i = None
         for i in range(len(self.points)):
             line = [self.points[i - 1], self.points[i]]
-            dist = labelme.utils.distancetoline(point, line)
+            dist = utils.distancetoline(point, line)
             if dist <= epsilon and dist < min_distance:
                 min_distance = dist
                 post_i = i

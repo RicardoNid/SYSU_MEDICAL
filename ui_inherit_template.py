@@ -10,7 +10,7 @@ from ui_class_py import *
 class LogicClass(QMainWindow, UiClass):
     '''
     TODO:
-        LogicClass: 改为实际逻辑类名
+        MainWindow: 改为实际逻辑类名
         QMainWindow: 改为实际窗体类型
         UiClass: 改为实际ui类名
     '''

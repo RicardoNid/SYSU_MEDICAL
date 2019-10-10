@@ -1,0 +1,2 @@
+from .ui_MainWindow import Ui_MainWindow
+from .ui_DatabaseWidget import Ui_DatabaseWidget

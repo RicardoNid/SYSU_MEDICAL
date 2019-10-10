@@ -6,13 +6,13 @@ from PyQt5.QtGui import *
 
 from functools import partial
 
-from ui_MainWindow import *
+from ui import Ui_MainWindow
 from canvas import Canvas
 from widgets import *
 
 import utils
 
-class LogicClass(QMainWindow, Ui_MainWindow):
+class MainWindow(QMainWindow, Ui_MainWindow):
 
     # 声明枚举量
     # 当前缩放的方式
@@ -20,7 +20,7 @@ class LogicClass(QMainWindow, Ui_MainWindow):
     CREATE_MODE, EDIT_MODE = 0, 1
 
     def __init__(self, parent=None):
-        super(LogicClass, self).__init__(parent)
+        super(MainWindow, self).__init__(parent)
         '''
         ui文件内容包括
             1.按键/菜单选项形式的Action的注册
@@ -44,7 +44,10 @@ class LogicClass(QMainWindow, Ui_MainWindow):
         self.wlww_action.setDefaultWidget(self.wlww_widget)
         self.toolBar.addAction(self.wlww_action)
 
-        self.init_docks()
+        self.init_dataset_tree_widget()
+        self.init_series_list_widget()
+        self.init_annotations_list_widget()
+        self.init_label_edit_dock()
         self.init_canvas()
 
         # 设置窗口显示属性
@@ -53,18 +56,24 @@ class LogicClass(QMainWindow, Ui_MainWindow):
         self.showMaximized()
         #  self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
-    def init_docks(self):
-        '''初始化的一部分，执行初始化子窗口的指令，单列一个函数以提升可读性'''
-        # 初始化子窗口
-        self.series_list_dock.setWidget(QListWidget())
-        self.dataset_tree_dock.setWidget(QTreeWidget())
-        self.annotation_list_dock.setWidget(QListWidget())
-        self.label_edit_dock.setWidget(QListWidget())
-
-        # 增加子窗口显示/隐藏动作
-        self.menuView.addAction(self.series_list_dock.toggleViewAction())
+    def init_dataset_tree_widget(self):
+        self.database_widget = DatabaseWidget()
+        self.dataset_tree_dock.setWidget(self.database_widget)
         self.menuView.addAction(self.dataset_tree_dock.toggleViewAction())
-        self.menuView.addAction(self.annotation_list_dock.toggleViewAction())
+
+    def init_series_list_widget(self):
+        self.series_list_dock.setWidget(QListWidget())
+        self.menuView.addAction(self.series_list_dock.toggleViewAction())
+
+    def init_annotations_list_widget(self):
+        '''初始化的一部分，执行初始化标签列表并与其耦合的指令，单列一个函数以提升可读性'''
+        self.annotations_list_widget = AnnotationsListWidget()
+        self.annotations_list_dock.setWidget(self.annotations_list_widget)
+        self.menuView.addAction(self.annotations_list_dock.toggleViewAction())
+
+    def init_label_edit_dock(self):
+        self.label_edit_widget = QWidget()
+        self.label_edit_dock.setWidget(self.label_edit_widget)
         self.menuView.addAction(self.label_edit_dock.toggleViewAction())
 
     def init_canvas(self):
@@ -135,14 +144,17 @@ class LogicClass(QMainWindow, Ui_MainWindow):
         self.add_actions(self.canvas_widget.create_menu, actions)
 
         '''响应canvas信号'''
+
         self.zoom_widget.valueChanged.connect(self.zoom_action_slot)
         self.wlww_widget.wlww_changed_signal.connect(self.wlww_action_slot)
         self.canvas_widget.zoom_request.connect(self.zoom_requeset_slot)
         self.canvas_widget.scroll_request.connect(self.scroll_request_slot)
         self.canvas_widget.wlww_request.connect(self.wlww_request_slot)
 
-        # insight: What a beautiful line!
-        #   这里发生了非常美妙，非常python的事情！
+        # 响应状态变化信号
+        self.canvas_widget.annotations_changed_signal.connect(self.annotations_list_widget.refresh)
+
+        # 响应功能可用性信号
         self.canvas_widget.has_edge_tobe_added_signal.\
             connect(lambda x: partial(
             utils.toggle_actions, [self.add_point_to_nearest_edge_action])(x))
@@ -282,10 +294,12 @@ class LogicClass(QMainWindow, Ui_MainWindow):
         else:
             self.canvas_widget.restore_annotations()
 
+    #
+
 if __name__ == '__main__':
     import sys
 
     app = QApplication(sys.argv)
-    window = LogicClass()
+    window = MainWindow()
     window.show()
     sys.exit(app.exec_())
