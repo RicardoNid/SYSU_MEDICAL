@@ -1,16 +1,23 @@
 '''用于快速验证SYSULUNG的UI'''
 
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+# insight: 代码范式：用例的快速实现
+#   1.将用例建模为action，其objectName()以'_action'结尾，在ui中注册action
+#   2.通过self.action(action_name)调用action，链接到实现函数
+#   3.有的action适合用单独的槽函数实现，链接到以self.action_name_slot为名的槽函数
+#   4.有的action适合与其它相近action一起通过相同函数采用不同参数实现，链接到以partial包装的槽函数
+#   5.有的action可以直接使用canvas中的函数（服务）实现，链接到self.canvas_widget的（partial包装的）函数
+
+from common_import import *
 
 from functools import partial
 
-from ui import Ui_MainWindow
+from ui_MainWindow import  Ui_MainWindow
 from canvas import Canvas
 from widgets import *
+from utils import *
 
-import utils
+from typing import *
+
 
 class MainWindow(QMainWindow, Ui_MainWindow):
 
@@ -30,6 +37,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         '''
         self.setupUi(self)
         '''注册和分发WidgetAction'''
+        self.raw_image = np.ndarray(0, dtype=int)
+
         # 注册zoom_action处理canvas以光标所在点为中心的缩放
         self.zoom_widget = ZoomWidget()
         self.zoom_action = QWidgetAction(self)
@@ -44,11 +53,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.wlww_action.setDefaultWidget(self.wlww_widget)
         self.toolBar.addAction(self.wlww_action)
 
-        self.init_dataset_tree_widget()
-        self.init_series_list_widget()
-        self.init_annotations_list_widget()
-        self.init_label_edit_dock()
-        self.init_canvas()
+        self.init_docks()
+
+        self.coupling_dataset_tree_widget()
+        self.coupling_series_list_widget()
+        self.coupling_annotations_list_widget()
+        self.coupling_label_edit_widget()
+        self.coupling_canvas()
 
         # 设置窗口显示属性
         self.setFocusPolicy(Qt.ClickFocus)
@@ -56,28 +67,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.showMaximized()
         #  self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
-    def init_dataset_tree_widget(self):
+    def init_docks(self):
+        '''初始化的一部分，执行浮动子窗口和canvas的初始化，单列一个函数以提升可读性'''
         self.database_widget = DatabaseWidget()
         self.dataset_tree_dock.setWidget(self.database_widget)
         self.menuView.addAction(self.dataset_tree_dock.toggleViewAction())
 
-    def init_series_list_widget(self):
-        self.series_list_dock.setWidget(QListWidget())
+        self.series_list_widget = SeriesListWidget()
+        self.series_list_dock.setWidget(self.series_list_widget)
         self.menuView.addAction(self.series_list_dock.toggleViewAction())
 
-    def init_annotations_list_widget(self):
-        '''初始化的一部分，执行初始化标签列表并与其耦合的指令，单列一个函数以提升可读性'''
         self.annotations_list_widget = AnnotationsListWidget()
         self.annotations_list_dock.setWidget(self.annotations_list_widget)
         self.menuView.addAction(self.annotations_list_dock.toggleViewAction())
 
-    def init_label_edit_dock(self):
         self.label_edit_widget = QWidget()
         self.label_edit_dock.setWidget(self.label_edit_widget)
         self.menuView.addAction(self.label_edit_dock.toggleViewAction())
 
-    def init_canvas(self):
-        '''初始化的一部分，执行初始化canvas并与其耦合的指令，单列一个函数以提升可读性'''
         self.canvas_area = QScrollArea()
         # TODO: 原理？看了文档还是不懂，需要进行更多研究
         self.canvas_area.setWidgetResizable(True)
@@ -87,16 +94,35 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.canvas_area.setWidget(self.canvas_widget)
         self.setCentralWidget(self.canvas_area)
 
-        # insight: 代码范式：用例的快速实现
-        #   1.将用例建模为action，其objectName()以'_action'结尾，在ui中注册action
-        #   2.通过self.action(action_name)调用action，链接到实现函数
-        #   3.有的action适合用单独的槽函数实现，链接到以self.action_name_slot为名的槽函数
-        #   4.有的action适合与其它相近action一起通过相同函数采用不同参数实现，链接到以partial包装的槽函数
-        #   5.有的action可以直接使用canvas中的函数（服务）实现，链接到self.canvas_widget的（partial包装的）函数
+    def coupling_dataset_tree_widget(self):
 
-        # 从主窗口通过action对canvas进行操作
+        self.new_database_action.triggered.connect(self.new_database_slot)
+
+        self.database_widget.series_selected_signal.connect(self.input_files_slot)
+
+    def coupling_series_list_widget(self):
+        '''初始化的一部分，执行与当前文件序列列表耦合的指令，单列一个函数以提升可读性'''
+        '''从主窗口通过action对series_list_widget进行操作'''
+        self.action('open_dir').triggered.connect(self.open_dir_slot)
+        self.action('open_next_image').triggered.connect(
+            self.series_list_widget.change_current_item_slot)
+        self.action('open_prev_image').triggered.connect(
+            self.series_list_widget.change_current_item_slot)
+        '''响应series_list_widget信号'''
+        self.series_list_widget.currentItemChanged.connect(self.change_current_file_slot)
+
+    def coupling_annotations_list_widget(self):
+        '''初始化的一部分，执行与标签列表耦合的指令，单列一个函数以提升可读性'''
+        pass
+
+    def coupling_label_edit_widget(self):
+        pass
+
+    def coupling_canvas(self):
+        '''初始化的一部分，执行与canvas耦合的指令，单列一个函数以提升可读性'''
+
+        '''从主窗口通过action对canvas进行操作'''
         # 模式和创建类型切换
-        # question: 是否能够使用tab切换模式？
         self.toggle_mode_action.triggered.connect(self.toggle_mode_slot)
         self.create_polygon_action.triggered.connect(
             partial(self.set_mode_slot, self.CREATE_MODE, 'polygon'))
@@ -144,7 +170,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.add_actions(self.canvas_widget.create_menu, actions)
 
         '''响应canvas信号'''
-
+        # 响应功能请求
         self.zoom_widget.valueChanged.connect(self.zoom_action_slot)
         self.wlww_widget.wlww_changed_signal.connect(self.wlww_action_slot)
         self.canvas_widget.zoom_request.connect(self.zoom_requeset_slot)
@@ -157,10 +183,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 响应功能可用性信号
         self.canvas_widget.has_edge_tobe_added_signal.\
             connect(lambda x: partial(
-            utils.toggle_actions, [self.add_point_to_nearest_edge_action])(x))
+            self.toggle_actions, ['add_point_to_nearest_edge'])(x))
         self.canvas_widget.is_canvas_creating_signal.\
             connect(lambda x: partial(
-            utils.toggle_actions, [self.add_point_to_nearest_edge_action])(x))
+            self.toggle_actions, ['add_point_to_nearest_edge'])(x))
 
     '''下面的方法协助动作分发的结构化'''
     def action(self, action_name: str) -> QAction:
@@ -177,7 +203,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 widget.addAction(self.action(action_name))
 
+    def toggle_actions(self, action_names: List[str], value: bool) -> None:
+        for action_name in action_names:
+            self.action(action_name).setEnabled(value)
+
     '''下面的方法与canvas进行交互'''
+    def change_current_file_slot(self, file_item: QListWidgetItem):
+        dicom_path = file_item.text()
+        wl, ww, dicom_array = get_dicom_info(dicom_path)
+        self.raw_image = dicom_array.copy()
+        if (self.wlww_widget.wl_spin.value() == 0) and (self.wlww_widget.ww_spin.value() == 0):
+            self.wlww_widget.wl_spin.setValue(wl)
+            self.wlww_widget.ww_spin.setValue(ww)
+        else:
+            self.wlww_action_slot()
+
     def scroll_request_slot(self, delta: int, orientation: int):
         '''响应canvas的滚动请求'''
         units = -delta * 0.1
@@ -253,8 +293,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def wlww_action_slot(self):
         '''窗位窗宽数值变化时触发，按照新的窗位窗位窗宽生成图像，重绘画布'''
-        # TODO
-        pass
+        pixmap = dicom_array2pixmap(
+            self.wlww_widget.wl_spin.value(), self.wlww_widget.ww_spin.value(), self.raw_image)
+        self.canvas_widget.loadPixmap(pixmap)
+        self.fit_window_slot(True)
 
     def toggle_mode_slot(self) -> None:
         '''实现模式切换'''
@@ -294,7 +336,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.canvas_widget.restore_annotations()
 
-    #
+    '''下面的方法与database_widget进行交互'''
+    def new_database_slot(self):
+        '''从指定目录新建dicom数据库'''
+        database_dir = QFileDialog.getExistingDirectory(self, '选择要扫描的目录')
+        if not database_dir:
+            return
+        database_name, ok = QInputDialog.getText(self, '输入数据库名称', '数据库名称：')
+        if ok:
+            self.database_widget.new_database(database_dir, database_name)
+
+    '''下面的方法与series_list_widget进行交互'''
+    def open_dir_slot(self):
+        files_dir = QFileDialog.getExistingDirectory(self, '选择要打开的目录')
+        if not files_dir:
+            return
+        files = get_dicom_files_path_from_dir(files_dir)
+        self.input_files_slot(files)
+
+    def input_files_slot(self, files):
+        '''
+        响应输入新的文件更新当前文件序列的请求，有以下来源
+            1.从数据库窗口获取序列输入
+            2.从open_dir/open_file action输入
+        '''
+        files = sorted(files)
+        self.series_list_widget.refresh_files(files)
 
 if __name__ == '__main__':
     import sys

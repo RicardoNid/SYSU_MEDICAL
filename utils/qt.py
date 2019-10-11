@@ -5,9 +5,10 @@ import os.path as osp
 
 import numpy as np
 
-from qtpy import QtCore
-from qtpy import QtGui
-from qtpy import QtWidgets
+from PyQt5 import QtWidgets
+from PyQt5 import QtCore
+from PyQt5 import QtGui
+
 
 here = osp.dirname(osp.abspath(__file__))
 
@@ -49,10 +50,6 @@ def newAction(parent, text, slot=None, shortcut=None, icon=None,
     return a
 
 
-def labelValidator():
-    return QtGui.QRegExpValidator(QtCore.QRegExp(r'^[^ \t].+'), None)
-
-
 def addActions(widget, actions):
     for action in actions:
         if action is None:
@@ -61,6 +58,15 @@ def addActions(widget, actions):
             widget.addMenu(action)
         else:
             widget.addAction(action)
+
+
+def labelValidator():
+    return QtGui.QRegExpValidator(QtCore.QRegExp(r'^[^ \t].+'), None)
+
+
+class struct(object):
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 
 def distance(p):
@@ -82,15 +88,3 @@ def distancetoline(point, line):
 def fmtShortcut(text):
     mod, key = text.split('+', 1)
     return '<b>%s</b>+<b>%s</b>' % (mod, key)
-
-def disable_actions(actions: list):
-    for action in actions:
-        action.setEnabled(False)
-
-def enable_actions(actions: list):
-    for action in actions:
-        action.setEnabled(True)
-
-def toggle_actions(actions: list, value: bool):
-    for action in actions:
-        action.setEnabled(value)

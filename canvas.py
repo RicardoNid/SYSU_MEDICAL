@@ -5,8 +5,8 @@ from PyQt5 import QtGui
 from PyQt5 import QtCore
 
 from annotations import Annotation
-import utils
 import functools
+import utils
 
 # - [maybe] Find optimal epsilon value.
 
@@ -49,8 +49,6 @@ class Canvas(QtWidgets.QWidget):
         # 支持图像存储和显示
         ################################################################################
         self.pixmap = QtGui.QPixmap()
-        self.pixmap = QtGui.QPixmap(
-            r'C:\Users\lsfan\PycharmProjects\SYSU_LUNG\C95atmosphereREBOOT_16.jpg')
         ################################################################################
         # 支持模式提示图标绘制
         ################################################################################
@@ -130,6 +128,9 @@ class Canvas(QtWidgets.QWidget):
         # TODO: 处理fill_annotation相关内容
         self._fill_annotation = False
         self.setFocusPolicy(QtCore.Qt.ClickFocus)
+        # TODO: 之后删掉
+        self.pixmap = QtGui.QPixmap(
+            r'C:\Users\lsfan\PycharmProjects\SYSU_LUNG\C95atmosphereREBOOT_16.jpg')
 
     @property
     def fill_annotation(self):
@@ -827,12 +828,23 @@ class Canvas(QtWidgets.QWidget):
     # 支持图像切换，初始化canvas数据池并加载标记文件中的标记列表
     ################################################################################
     #
+    def change_pixmap(self, pixmap):
+        print('here')
+        self.pixmap = pixmap
+        self.annotations = []
+        self.annotataions_backups = []
+        self.selected_annotations = []
+        self.hShape = None
+        self.hVertex = None
+        self.hEdge = None
+        self.repaint()
+
     def loadPixmap(self, pixmap):
         self.pixmap = pixmap
         self.annotations = []
         self.repaint()
 
-    def loadShapes(self, annotations, replace=True):
+    def load_shapes(self, annotations, replace=True):
         if replace:
             self.annotations = list(annotations)
         else:

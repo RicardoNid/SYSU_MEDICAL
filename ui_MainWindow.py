@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'MainWindow.ui'
 #
-# Created by: PyQt5 UI code generator 5.11.3
+# Created by: PyQt5 UI code generator 5.9.2
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -34,6 +34,8 @@ class Ui_MainWindow(object):
         self.menuHelp.setObjectName("menuHelp")
         self.menuDiagnose = QtWidgets.QMenu(self.menubar)
         self.menuDiagnose.setObjectName("menuDiagnose")
+        self.menu = QtWidgets.QMenu(self.menubar)
+        self.menu.setObjectName("menu")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -103,7 +105,7 @@ class Ui_MainWindow(object):
         self.open_file_action.setObjectName("open_file_action")
         self.open_dir_action = QtWidgets.QAction(MainWindow)
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap("icons/folder.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon1.addPixmap(QtGui.QPixmap("icons/open_dir.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.open_dir_action.setIcon(icon1)
         self.open_dir_action.setObjectName("open_dir_action")
         self.quit_action = QtWidgets.QAction(MainWindow)
@@ -238,6 +240,11 @@ class Ui_MainWindow(object):
         self.select_all_annotations_action.setObjectName("select_all_annotations_action")
         self.hide_selected_annotation_action = QtWidgets.QAction(MainWindow)
         self.hide_selected_annotation_action.setObjectName("hide_selected_annotation_action")
+        self.new_database_action = QtWidgets.QAction(MainWindow)
+        icon20 = QtGui.QIcon()
+        icon20.addPixmap(QtGui.QPixmap("icons/new_database.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.new_database_action.setIcon(icon20)
+        self.new_database_action.setObjectName("new_database_action")
         self.label_edit_dock.raise_()
         self.annotations_list_dock.raise_()
         self.series_list_dock.raise_()
@@ -287,7 +294,9 @@ class Ui_MainWindow(object):
         self.menuView.addAction(self.toggle_all_annotatons_visibility_action)
         self.menuHelp.addAction(self.open_help_doc_action)
         self.menuDiagnose.addAction(self.excute_lung_nodule_analysis_action)
+        self.menu.addAction(self.new_database_action)
         self.menubar.addAction(self.menuFile.menuAction())
+        self.menubar.addAction(self.menu.menuAction())
         self.menubar.addAction(self.menuEdit.menuAction())
         self.menubar.addAction(self.menuDiagnose.menuAction())
         self.menubar.addAction(self.menuView.menuAction())
@@ -321,6 +330,7 @@ class Ui_MainWindow(object):
         self.menuView.setTitle(_translate("MainWindow", "视图(&V)"))
         self.menuHelp.setTitle(_translate("MainWindow", "帮助(&H)"))
         self.menuDiagnose.setTitle(_translate("MainWindow", "诊断(&D)"))
+        self.menu.setTitle(_translate("MainWindow", "数据库(&B)"))
         self.toolBar.setWindowTitle(_translate("MainWindow", "toolBar"))
         self.annotations_list_dock.setWindowTitle(_translate("MainWindow", "标记列表"))
         self.label_edit_dock.setWindowTitle(_translate("MainWindow", "标签编辑器"))
@@ -413,4 +423,7 @@ class Ui_MainWindow(object):
         self.select_all_annotations_action.setShortcut(_translate("MainWindow", "Ctrl+A"))
         self.hide_selected_annotation_action.setText(_translate("MainWindow", "隐藏标记"))
         self.hide_selected_annotation_action.setToolTip(_translate("MainWindow", "隐藏当前被单选选中的标记"))
+        self.new_database_action.setText(_translate("MainWindow", "新建数据库"))
+        self.new_database_action.setToolTip(_translate("MainWindow", "从指定目录扫描dicom文件建立数据库"))
+        self.new_database_action.setShortcut(_translate("MainWindow", "Ctrl+Shift+N"))
 

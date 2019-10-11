@@ -14,6 +14,12 @@ class DicomTree(ElementTree):
     def __init__(self):
         super(DicomTree, self).__init__()
 
+    @staticmethod
+    def load(xml_path: str):
+        dicom_tree = DicomTree()
+        dicom_tree.parse(xml_path)
+        return dicom_tree
+
     @property
     def patients(self) -> Set[str]:
         '''获得Dicom树上所有不同的patient id'''
@@ -55,7 +61,6 @@ class DicomTree(ElementTree):
                         'Instance UID': dicom_object[0x0008, 0x0018].value, # instance的唯一标识符
                         'Instance Number': digit000(str(dicom_object[0x0020, 0x0013].value)), # instance的序号
                     }
-                    print(metadata_dict)
                     # 逐级检查标识符，若无则创建，若有则添加到其上
                     # 检查是否已有此患者
                     patient_id_list = [patient.get('id') for patient in dicom_tree._root.findall('patient')]

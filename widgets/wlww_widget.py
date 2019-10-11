@@ -7,7 +7,7 @@ class WlwwWidget(QtWidgets.QWidget):
 
     wlww_changed_signal = QtCore.pyqtSignal(int, int)
 
-    def __init__(self, wl=-600, ww=1200):
+    def __init__(self):
         super(WlwwWidget,self).__init__()
         self.layout = QtWidgets.QHBoxLayout()
 
@@ -15,7 +15,7 @@ class WlwwWidget(QtWidgets.QWidget):
         self.wl_spin = QtWidgets.QSpinBox()
         self.wl_spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.wl_spin.setRange(-1024, 1024)
-        self.wl_spin.setValue(wl)
+        self.wl_spin.setValue(0)
         self.wl_spin.setAlignment(QtCore.Qt.AlignCenter)
         self.wl_spin.valueChanged.connect(self.wlww_changed)
 
@@ -23,7 +23,7 @@ class WlwwWidget(QtWidgets.QWidget):
         self.ww_spin = QtWidgets.QSpinBox()
         self.ww_spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
         self.ww_spin.setRange(0, 5000)
-        self.ww_spin.setValue(ww)
+        self.ww_spin.setValue(0)
         self.ww_spin.setAlignment(QtCore.Qt.AlignCenter)
         self.ww_spin.valueChanged.connect(self.wlww_changed)
 

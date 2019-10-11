@@ -102,7 +102,14 @@
     </property>
     <addaction name="excute_lung_nodule_analysis_action"/>
    </widget>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>数据库(&amp;B)</string>
+    </property>
+    <addaction name="new_database_action"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menu"/>
    <addaction name="menuEdit"/>
    <addaction name="menuDiagnose"/>
    <addaction name="menuView"/>
@@ -229,7 +236,7 @@
   <action name="open_dir_action">
    <property name="icon">
     <iconset>
-     <normaloff>icons/folder.svg</normaloff>icons/folder.svg</iconset>
+     <normaloff>icons/open_dir.svg</normaloff>icons/open_dir.svg</iconset>
    </property>
    <property name="text">
     <string>打开文件夹</string>
@@ -650,6 +657,21 @@
    </property>
    <property name="toolTip">
     <string>隐藏当前被单选选中的标记</string>
+   </property>
+  </action>
+  <action name="new_database_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/new_database.svg</normaloff>icons/new_database.svg</iconset>
+   </property>
+   <property name="text">
+    <string>新建数据库</string>
+   </property>
+   <property name="toolTip">
+    <string>从指定目录扫描dicom文件建立数据库</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+N</string>
    </property>
   </action>
   <zorder>label_edit_dock</zorder>

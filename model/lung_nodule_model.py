@@ -1,5 +1,4 @@
 from common_import import *
-import logger
 
 class LungNoduleLabel():
     '''肺结节标签数据，参照LIDC设计'''
