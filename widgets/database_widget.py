@@ -2,34 +2,23 @@
 实现数据库控件
 占据MainWindow的一个浮动子窗口
 '''
-from common_import import *
-import pydicom
-from xml.etree.ElementTree import ElementTree,Element
+from xml.etree.ElementTree import Element
 
 from datatypes import DicomTree
 from utils import *
 
 # 用于支持复合type-hint
-from typing import List
 
-class DatabaseWidget(QWidget):
+class DatabaseWidget(QTreeWidget):
 
     DATABASE_PATH = osp.abspath(r'database')
-    series_selected_signal = pyqtSignal(List[str])
+    series_selected_signal = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super(DatabaseWidget, self).__init__(parent)
 
         self.dicom_trees = []
-
-        self.init_ui()
         self.init_content()
-
-    def init_ui(self):
-        self.layout = QGridLayout()
-        self.database_tree_widget = QTreeWidget()
-        self.layout.addWidget(self.database_tree_widget)
-        self.setLayout(self.layout)
 
     def new_database(self, dir_path: str, database_name: str) -> None:
         '''在指定目录下递归搜索所有dicom文件，构成DicomTree，加载到数据库窗口并保存'''
@@ -44,6 +33,7 @@ class DatabaseWidget(QWidget):
                            encoding='utf-8',xml_declaration=True)
         self.dicom_trees.append(new_database)
         self.refresh()
+        self.expandToDepth(2)
 
     def init_databases(self):
         databases = [osp.join(self.DATABASE_PATH, database) for database
@@ -54,29 +44,30 @@ class DatabaseWidget(QWidget):
     def init_content(self):
         '''初始化显示'''
         # 设置树控件
-        self.database_tree_widget.setColumnCount(3)
-        # self.database_tree_widget.setHeaderHidden(True)
-        self.database_tree_widget.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setColumnCount(3)
+        # self.setHeaderHidden(True)
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
         # question: 哪种选择模式比较好？
-        self.database_tree_widget.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.database_tree_widget.setHeaderLabels(['内容', 'uid/id', '文件路径'])
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setHeaderLabels(['内容', 'uid/id', '文件路径'])
         # TODO: 更好的显示方案
-        self.database_tree_widget.hideColumn(1)
-        # self.database_tree_widget.hideColumn(2)
-        self.database_tree_widget.setColumnWidth(0, 200)
+        self.hideColumn(1)
+        self.hideColumn(2)
         # 读取和显示现有数据库
         self.init_databases()
         self.refresh()
+        # 初始状态下展开到series级别
+        self.expandToDepth(2)
 
     def refresh(self):
         '''根据DicomTree的内容刷新显示'''
-        self.database_tree_widget.clear()
+        self.clear()
         for database in self.dicom_trees:
             root_item = QTreeWidgetItem()
             root_item.setText(0, database.getroot().attrib['name'])
             self.build_tree_recursively(root_item, database.getroot())
-            self.database_tree_widget.resizeColumnToContents(0)
-            self.database_tree_widget.addTopLevelItem(root_item)
+            self.addTopLevelItem(root_item)
+            self.setColumnWidth(0,400)
 
     def build_tree_recursively(self, tree_widget_item: QTreeWidgetItem, dicom_tree_element: Element):
         # 在series层递归结束
@@ -86,15 +77,21 @@ class DatabaseWidget(QWidget):
             for child_element in list(dicom_tree_element):
                 text_list = []
                 if child_element.tag == 'database':
-                    text_list = [child_element.attrib['name'], '', '']
+                    text_list = [child_element.attrib['name'],
+                                 '',
+                                 '']
                 elif child_element.tag == 'patient':
-                    text_list = [child_element.attrib['id']+ child_element.attrib['name'], '', '']
+                    text_list = ['患者' + child_element.attrib['id'] + ' ' + child_element.attrib['name'],
+                                 child_element.attrib['id'],
+                                 '']
                 elif child_element.tag == 'study':
-                    text_list = ['study: ' + child_element.attrib['date'], child_element.attrib['uid'], '']
+                    text_list = ['检查: ' + child_element.attrib['date'],
+                                 child_element.attrib['uid'],
+                                 '']
                 elif child_element.tag == 'series':
-                    text_list = ['series' + child_element.attrib['number'] + ':' +
-                                 child_element.attrib['description'],
-                                 child_element.attrib['uid'], '']
+                    text_list = ['序列' + child_element.attrib['number'] + ': ' +child_element.attrib['description'],
+                                 child_element.attrib['uid'],
+                                 '']
                     # 对于seires，如果其中instance都来自同一目录，显示目录路径为其文件路径
                     dir = ''
                     for instance in list(child_element):
@@ -114,17 +111,26 @@ class DatabaseWidget(QWidget):
                 # 递归调用
                 self.build_tree_recursively(child_item, child_element)
 
-                self.database_tree_widget.resizeColumnToContents(0)
-                self.database_tree_widget.resizeColumnToContents(1)
-                self.database_tree_widget.resizeColumnToContents(2)
+                self.resizeColumnToContents(0)
+                self.resizeColumnToContents(1)
+                self.resizeColumnToContents(2)
 
     def mouseDoubleClickEvent(self, ev):
-        print('double click triggered')
-        path = self.database_tree_widget.currentItem.text(2)
-        # 如果选中的条目有文件路径
-        if path:
-            files = get_dicom_files_path_from_dir(path)
-            self.series_selected_signal(files)
+        # 如果选中的条目是序列
+        if '序列' in self.currentItem().text(0):
+            files = []
+            # 从下往上获取uid，然后用uid在DicomTree上从上往下查找到序列节点，获得其所有实例子节点的路径
+            series_uid = self.currentItem().text(1)
+            study_uid = self.currentItem().parent().text(1)
+            patient_id = self.currentItem().parent().parent().text(1)
+            database_name = self.currentItem().parent().parent().parent().text(0)
+            print(series_uid, study_uid, patient_id, database_name, sep='\n')
+
+            index = [dicom_tree.getroot().attrib['name'] for dicom_tree in self.dicom_trees].index(database_name)
+            dicom_tree = self.dicom_trees[index]
+            series_element = dicom_tree.search_by_top_down_uid([patient_id, study_uid, series_uid])
+            files = [instance.attrib['path'] for instance in list(series_element)]
+            self.series_selected_signal.emit(files)
 
 if __name__ == '__main__':
     import sys

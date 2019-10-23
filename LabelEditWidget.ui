@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LabelEditWidget</class>
+ <widget class="QWidget" name="LabelEditWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>603</width>
+    <height>417</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>标签</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="1" column="0">
+    <widget class="QLabel" name="solidity_label">
+     <property name="text">
+      <string>实性</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="malignancy_label">
+     <property name="text">
+      <string>良恶</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QRadioButton" name="benign_button">
+     <property name="text">
+      <string>良性</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">buttonGroup</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QRadioButton" name="malignant_button">
+     <property name="text">
+      <string>恶性</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">buttonGroup</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="0" column="3">
+    <widget class="QRadioButton" name="malignancy_unknown_button">
+     <property name="text">
+      <string>？</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">buttonGroup</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="3">
+    <widget class="QComboBox" name="segmentation_comgbobox">
+     <item>
+      <property name="text">
+       <string>？</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="add_sign_button">
+     <property name="text">
+      <string>+</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="lobulation_label">
+     <property name="text">
+      <string>分叶</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="comment_label">
+     <property name="text">
+      <string>备注</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QComboBox" name="lobulation_combobox">
+     <item>
+      <property name="text">
+       <string>？</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>左肺上叶</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>左肺下叶</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>右肺上叶</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>右肺中叶</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>右肺下叶</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item row="4" column="1" colspan="3">
+    <widget class="QTextEdit" name="comment_edit">
+     <property name="tabletTracking">
+      <bool>true</bool>
+     </property>
+     <property name="tabChangesFocus">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QRadioButton" name="solidity_unknown_button">
+     <property name="text">
+      <string>？</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">buttonGroup_2</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QRadioButton" name="solid_button">
+     <property name="text">
+      <string>实性</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">buttonGroup_2</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="2">
+    <widget class="QLabel" name="segmentation_label">
+     <property name="text">
+      <string>分段</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="sign_label">
+     <property name="text">
+      <string>影像学征象</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QRadioButton" name="ground_glass_button">
+     <property name="text">
+      <string>磨玻璃</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">buttonGroup_2</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="apply_button">
+     <property name="text">
+      <string>应用</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="3">
+    <widget class="QPushButton" name="reset_button">
+     <property name="text">
+      <string>重置</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2" colspan="2">
+    <widget class="QComboBox" name="sign_combobox">
+     <item>
+      <property name="text">
+       <string>无</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>分叶征</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>毛刺征</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>空泡征</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>细支气管征</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>空洞征</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>血管集束征</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>胸膜凹陷征</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>结节内小支气管壁局部增厚</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>管腔局部狭窄</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>毛玻璃病灶内见实性成份</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>malignancy_unknown_button</tabstop>
+  <tabstop>malignant_button</tabstop>
+  <tabstop>benign_button</tabstop>
+  <tabstop>solidity_unknown_button</tabstop>
+  <tabstop>ground_glass_button</tabstop>
+  <tabstop>solid_button</tabstop>
+  <tabstop>lobulation_combobox</tabstop>
+  <tabstop>segmentation_comgbobox</tabstop>
+  <tabstop>add_sign_button</tabstop>
+  <tabstop>sign_combobox</tabstop>
+  <tabstop>comment_edit</tabstop>
+  <tabstop>apply_button</tabstop>
+  <tabstop>reset_button</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup_2"/>
+  <buttongroup name="buttonGroup"/>
+ </buttongroups>
+</ui>

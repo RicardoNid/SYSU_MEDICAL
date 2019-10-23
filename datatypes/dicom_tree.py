@@ -3,6 +3,8 @@ import os
 import os.path as osp
 from xml.etree.ElementTree import ElementTree,Element
 
+import time
+
 from typing import Tuple, List, Dict, Set
 
 def digit000(digits: str) -> str:
@@ -41,6 +43,9 @@ class DicomTree(ElementTree):
         dicom_tree._root.attrib = {'name': name}
 
         # 递归遍历指定目录下所有的文件，读取所有dicom文件的元信息，增加到Dicom树
+        # TEST
+        count = 0
+        time_start = time.time()
         for root, dirs, files in os.walk(dir):
             for file in files:
                 if file.lower().endswith('.dcm'):
@@ -136,12 +141,45 @@ class DicomTree(ElementTree):
                         instance_number_list.append(metadata_dict['Instance Number'])
                         index = sorted(instance_number_list).index(metadata_dict['Instance Number'])
                         current_series.insert(index, new_instance)
+                        # TEST
+                        count += 1
+                        print('%d dcms done, %f seconds' % (count, time.time() - time_start))
+                        if count > 10000:
+                            return dicom_tree
         return dicom_tree
+
+    def search_by_top_down_uid(self, uid: List[str]) -> Element:
+        '''根据从前往后，自顶向下的uid查找element,返回element'''
+        result_element = None
+        if uid:
+            patient_id = uid.pop(0)
+            for patient in self.getroot().findall('patient'):
+                if patient.attrib['id'] == patient_id:
+                    result_element = patient
+                    break
+            if uid and result_element:
+                study_uid = uid.pop(0)
+                for study in result_element.findall('study'):
+                    if study.attrib['uid'] == study_uid:
+                        result_element = study
+                        break
+                if uid and result_element:
+                    series_uid = uid.pop(0)
+                    for series in result_element.findall('series'):
+                        if series.attrib['uid'] == series_uid:
+                            result_element = series
+                            break
+                    if uid and result_element:
+                        instance_uid = uid.pop(0)
+                        for instance in result_element.findall('instance'):
+                            if instance.attrib['uid'] == instance_uid:
+                                result_element = instance
+                                break
+        return result_element
 
 if __name__ == '__main__':
 
-    database_dir = r'Y:\MRI\demo\10149857'
-    tree = DicomTree()
-    mri_tree = DicomTree.load_from_dir(database_dir, 'MRI数据库')
-    mri_tree.write('example.xml', encoding='utf-8',xml_declaration=True)
+    database_dir = r'Z:\SYSU-LUNG'
+    SYSU_tree = DicomTree.load_from_dir(database_dir, 'MRI数据库')
+    SYSU_tree.write('SYSU-LUNG.xml', encoding='utf-8',xml_declaration=True)
 

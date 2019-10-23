@@ -28,11 +28,11 @@ class SeriesListWidget(QListWidget):
         for file in self.files:
             self.addItem(file)
 
-    def change_current_item_slot(self):
-        if 'next' in self.sender().objectName():
-            self.setCurrentRow(self.currentRow() + 1)
-        if 'prev' in self.sender().objectName():
-            self.setCurrentRow(self.currentRow() - 1)
+    def change_current_item_slot(self, value: int):
+        new_row = self.currentRow() + value
+        new_row = max(new_row, 0)
+        new_row = min(new_row, self.count() - 1)
+        self.setCurrentRow(new_row)
 
 
 

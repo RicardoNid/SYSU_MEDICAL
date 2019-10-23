@@ -8,16 +8,16 @@
 #   5.有的action可以直接使用canvas中的函数（服务）实现，链接到self.canvas_widget的（partial包装的）函数
 
 from common_import import *
-
 from functools import partial
+import sys
 
 from ui_MainWindow import  Ui_MainWindow
 from canvas import Canvas
+from datatypes import *
 from widgets import *
 from utils import *
 
 from typing import *
-
 
 class MainWindow(QMainWindow, Ui_MainWindow):
 
@@ -38,6 +38,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         '''注册和分发WidgetAction'''
         self.raw_image = np.ndarray(0, dtype=int)
+        self.current_file = ''
+        self.current_file_wl = 0
+        self.current_file_ww = 0
 
         # 注册zoom_action处理canvas以光标所在点为中心的缩放
         self.zoom_widget = ZoomWidget()
@@ -51,10 +54,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.wlww_action = QWidgetAction(self)
         self.wlww_action.setObjectName('wlww_action')
         self.wlww_action.setDefaultWidget(self.wlww_widget)
-        self.toolBar.addAction(self.wlww_action)
+        self.toolBar.insertAction(self.wlww_reset_action, self.wlww_action)
 
         self.init_docks()
 
+        self.coupling_mainwindow_actions()
         self.coupling_dataset_tree_widget()
         self.coupling_series_list_widget()
         self.coupling_annotations_list_widget()
@@ -81,7 +85,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.annotations_list_dock.setWidget(self.annotations_list_widget)
         self.menuView.addAction(self.annotations_list_dock.toggleViewAction())
 
-        self.label_edit_widget = QWidget()
+        self.label_edit_widget = LabelEditWidget()
         self.label_edit_dock.setWidget(self.label_edit_widget)
         self.menuView.addAction(self.label_edit_dock.toggleViewAction())
 
@@ -94,10 +98,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.canvas_area.setWidget(self.canvas_widget)
         self.setCentralWidget(self.canvas_area)
 
+    def coupling_mainwindow_actions(self):
+        self.save_file_action.triggered.connect(self.save_current_work)
+        self.wlww_reset_action.triggered.connect(self.wlww_reset_slot)
+
     def coupling_dataset_tree_widget(self):
-
         self.new_database_action.triggered.connect(self.new_database_slot)
-
         self.database_widget.series_selected_signal.connect(self.input_files_slot)
 
     def coupling_series_list_widget(self):
@@ -105,18 +111,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         '''从主窗口通过action对series_list_widget进行操作'''
         self.action('open_dir').triggered.connect(self.open_dir_slot)
         self.action('open_next_image').triggered.connect(
-            self.series_list_widget.change_current_item_slot)
+            partial(self.series_list_widget.change_current_item_slot, 1))
         self.action('open_prev_image').triggered.connect(
-            self.series_list_widget.change_current_item_slot)
+            partial(self.series_list_widget.change_current_item_slot, -1))
         '''响应series_list_widget信号'''
         self.series_list_widget.currentItemChanged.connect(self.change_current_file_slot)
 
     def coupling_annotations_list_widget(self):
         '''初始化的一部分，执行与标签列表耦合的指令，单列一个函数以提升可读性'''
-        pass
+        self.annotations_list_widget.itemSelectionChanged.connect(
+            self.selected_annotations_changed_slot)
 
     def coupling_label_edit_widget(self):
-        pass
+        self.label_edit_widget.apply_label_signal.connect(self.apply_label_slot)
 
     def coupling_canvas(self):
         '''初始化的一部分，执行与canvas耦合的指令，单列一个函数以提升可读性'''
@@ -179,6 +186,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # 响应状态变化信号
         self.canvas_widget.annotations_changed_signal.connect(self.annotations_list_widget.refresh)
+        self.canvas_widget.annotation_created_signal.connect(self.label_new_annotation_slot)
+        self.canvas_widget.selected_annotations_changed_signal.connect(self.selected_annotations_changed_slot)
 
         # 响应功能可用性信号
         self.canvas_widget.has_edge_tobe_added_signal.\
@@ -209,14 +218,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     '''下面的方法与canvas进行交互'''
     def change_current_file_slot(self, file_item: QListWidgetItem):
-        dicom_path = file_item.text()
-        wl, ww, dicom_array = get_dicom_info(dicom_path)
-        self.raw_image = dicom_array.copy()
-        if (self.wlww_widget.wl_spin.value() == 0) and (self.wlww_widget.ww_spin.value() == 0):
-            self.wlww_widget.wl_spin.setValue(wl)
-            self.wlww_widget.ww_spin.setValue(ww)
-        else:
-            self.wlww_action_slot()
+        if file_item:
+            self.save_current_work()
+            self.current_file = file_item.text()
+            self.current_file_wl, self.current_file_ww, dicom_array = get_dicom_info(self.current_file)
+            self.raw_image = dicom_array.copy()
+            if (self.wlww_widget.wl_spin.value() == 0) and (self.wlww_widget.ww_spin.value() == 0):
+                self.wlww_widget.wl_spin.setValue(self.current_file_wl)
+                self.wlww_widget.ww_spin.setValue(self.current_file_ww)
+            else:
+                self.wlww_action_slot()
+            annotations_file = self.current_file.replace('.dcm', '.pkl')
+            # 读取标签文件
+            if osp.exists(annotations_file):
+                with open(annotations_file, 'rb') as annotations_pkl:
+                    annotations = pickle.load(annotations_pkl)
+                self.canvas_widget.load_annotations(annotations)
+            # 保存当前文件
+
 
     def scroll_request_slot(self, delta: int, orientation: int):
         '''响应canvas的滚动请求'''
@@ -286,6 +305,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.canvas_widget.adjustSize()
         self.canvas_widget.update()
 
+    def wlww_reset_slot(self):
+        print('reset')
+        self.wlww_widget.wl_spin.setValue(self.current_file_wl)
+        self.wlww_widget.ww_spin.setValue(self.current_file_ww)
+
     def wlww_request_slot(self, wl_delta, ww_delta):
         '''响应canvas的窗位窗宽调整请求'''
         self.wlww_widget.wl_spin.setValue(self.wlww_widget.wl_spin.value() + wl_delta)
@@ -295,7 +319,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         '''窗位窗宽数值变化时触发，按照新的窗位窗位窗宽生成图像，重绘画布'''
         pixmap = dicom_array2pixmap(
             self.wlww_widget.wl_spin.value(), self.wlww_widget.ww_spin.value(), self.raw_image)
-        self.canvas_widget.loadPixmap(pixmap)
+        self.canvas_widget.change_pixmap(pixmap)
         self.fit_window_slot(True)
 
     def toggle_mode_slot(self) -> None:
@@ -336,6 +360,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.canvas_widget.restore_annotations()
 
+    def label_new_annotation_slot(self, new_annotation: Annotation):
+        new_annotation.label = LabelEditDialog.get_label()
+        print(new_annotation.label.segmentation)
+
+    def selected_annotations_changed_slot(self, selected_annotations=None):
+        '''
+        响应被选中标记变化信号，包括从canvas上选中和从annotation_list_widget上选中传出的信号
+            1.
+            2.更改标签编辑窗口内容为最后被选中的标记的标签内容
+        '''
+        if self.sender() == self.annotations_list_widget:
+            selected_annotations = []
+            for index in self.annotations_list_widget.selectedIndexes():
+                selected_annotations.append(self.canvas_widget.annotations[index.row()])
+            self.canvas_widget.select_specific_annotations(selected_annotations)
+        elif self.sender() == self.canvas_widget:
+            pass
+
+        if selected_annotations:
+            self.label_edit_widget.label = selected_annotations[-1].label
+            self.label_edit_widget.refresh()
+        else:
+            self.label_edit_widget.reset()
+
     '''下面的方法与database_widget进行交互'''
     def new_database_slot(self):
         '''从指定目录新建dicom数据库'''
@@ -362,11 +410,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         '''
         files = sorted(files)
         self.series_list_widget.refresh_files(files)
+        self.series_list_widget.change_current_item_slot(-9999)
+        self.wlww_reset_slot()
 
-if __name__ == '__main__':
-    import sys
+    '''下面的方法与label_edit_widget进行交互'''
+    def apply_label_slot(self, label: LabelStruct):
+        if self.canvas_widget.selected_annotations:
+            self.canvas_widget.selected_annotations[-1].label = label
+            self.annotations_list_widget.refresh(self.canvas_widget.annotations)
 
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
+    '''下面的方法实现全局功能'''
+    def save_current_work(self):
+        '''保存当前图像的所有标记为图像同名文件'''
+        if self.current_file:
+            with open(self.current_file.replace('.dcm', '.pkl'), 'wb') as annotations_pkl:
+                pickle.dump(self.canvas_widget.annotations, annotations_pkl)
+
+app = QApplication(sys.argv)
+window = MainWindow()
+window.show()
+sys.exit(app.exec_())
+

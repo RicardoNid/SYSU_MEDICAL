@@ -1,1 +1,0 @@
-__appname__ = 'SYSULUNG'

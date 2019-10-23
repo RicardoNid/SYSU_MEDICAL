@@ -4,8 +4,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 
-from annotations import Annotation
-import functools
+from datatypes import Annotation
 import utils
 
 # - [maybe] Find optimal epsilon value.
@@ -28,13 +27,17 @@ class Canvas(QtWidgets.QWidget):
     scroll_request = QtCore.pyqtSignal(int, int)
     # 调整窗位窗宽的请求，请求主窗口重新生成pixmap传入
     wlww_request = QtCore.pyqtSignal(float, float)
+
     '''数据池变化通知，希望主窗口在关联视图上响应'''
+    # 通知有新标记产生
+    annotation_created_signal = QtCore.pyqtSignal(Annotation)
     # 通知标记列表因有标记被创建/复制/删除而变化
     annotations_changed_signal = QtCore.pyqtSignal(list)
     # 通知被选中的标记发生变化
     selected_annotations_changed_signal = QtCore.pyqtSignal(list)
     # 通知标记可见性发生变化
     annotations_visibility_changed_signal = QtCore.pyqtSignal()
+
     '''可用性和状态变化通知，希望主窗口在action可用性上响应'''
     # 通知现在处于标记创建过程中
     is_canvas_creating_signal = QtCore.pyqtSignal(bool)
@@ -128,9 +131,6 @@ class Canvas(QtWidgets.QWidget):
         # TODO: 处理fill_annotation相关内容
         self._fill_annotation = False
         self.setFocusPolicy(QtCore.Qt.ClickFocus)
-        # TODO: 之后删掉
-        self.pixmap = QtGui.QPixmap(
-            r'C:\Users\lsfan\PycharmProjects\SYSU_LUNG\C95atmosphereREBOOT_16.jpg')
 
     @property
     def fill_annotation(self):
@@ -289,6 +289,7 @@ class Canvas(QtWidgets.QWidget):
         assert self.current_annotation
         self.current_annotation.close()
         self.annotations.append(self.current_annotation)
+        self.annotation_created_signal.emit(self.current_annotation)
         self.store_annotations()
         self.current_annotation = None
         self.is_canvas_creating_signal.emit(False)
@@ -839,12 +840,7 @@ class Canvas(QtWidgets.QWidget):
         self.hEdge = None
         self.repaint()
 
-    def loadPixmap(self, pixmap):
-        self.pixmap = pixmap
-        self.annotations = []
-        self.repaint()
-
-    def load_shapes(self, annotations, replace=True):
+    def load_annotations(self, annotations, replace=True):
         if replace:
             self.annotations = list(annotations)
         else:
@@ -954,7 +950,6 @@ if __name__ == '__main__':
     from pycallgraph import PyCallGraph
     from pycallgraph.output import GraphvizOutput
     from pycallgraph import Config
-    from pycallgraph import GlobbingFilter
 
     graphviz = GraphvizOutput()
     graphviz.output_file = 'basic.png'

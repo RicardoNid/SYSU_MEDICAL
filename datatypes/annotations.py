@@ -13,6 +13,7 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 
 import utils
+from datatypes import LabelStruct
 
 # TODO(unknown):
 # - [opt] Store paths instead of creating new ones at each paint.
@@ -55,7 +56,7 @@ class Annotation(object):
                  flags=None):
         # 数据属性：点，标签（只能有一个）和标志（可以有多个）
         self.points = []
-        self.disease_specific_label = {}
+        self.label = LabelStruct()
         self.is_visable = True
 
         # 状态属性

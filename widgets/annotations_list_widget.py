@@ -8,7 +8,7 @@ from common_import import *
 # 用于支持复合type-hint
 from typing import List
 
-from annotations import Annotation
+from datatypes import Annotation
 
 class AnnotationsListWidget(QListWidget):
     def __init__(self):
@@ -19,15 +19,14 @@ class AnnotationsListWidget(QListWidget):
         self.init_content()
 
     def init_content(self):
-
         self.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
     def refresh(self, annotations: List[Annotation]) -> None:
         self.clear()
         self.annotations = annotations
         for i, annotation in enumerate(self.annotations):
-            self.addItem(annotation.annotation_type)
+            self.addItem(annotation.label.malignancy)
             self.item(i).setCheckState(annotation.is_visable)
 
 
