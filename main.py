@@ -396,10 +396,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     '''下面的方法与series_list_widget进行交互'''
     def open_dir_slot(self):
+        '''打开文件夹，将.dcm文件增加到数据库'''
         files_dir = QFileDialog.getExistingDirectory(self, '选择要打开的目录')
         if not files_dir:
             return
         files = get_dicom_files_path_from_dir(files_dir)
+        # TODO: 之后修改为可以添加到任意数据库
+        self.database_widget.add_to_database(0, files)
+
         self.input_files_slot(files)
 
     def input_files_slot(self, files):
@@ -411,7 +415,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         files = sorted(files)
         self.series_list_widget.refresh_files(files)
         self.series_list_widget.change_current_item_slot(-9999)
-        self.wlww_reset_slot()
+        if self.toggle_auto_wlww_action.isChecked():
+            self.wlww_reset_slot()
 
     '''下面的方法与label_edit_widget进行交互'''
     def apply_label_slot(self, label: LabelStruct):

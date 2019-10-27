@@ -146,6 +146,7 @@
    <addaction name="fit_window_width_action"/>
    <addaction name="separator"/>
    <addaction name="wlww_reset_action"/>
+   <addaction name="toggle_auto_wlww_action"/>
   </widget>
   <widget class="QDockWidget" name="annotations_list_dock">
    <property name="sizePolicy">
@@ -616,7 +617,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>icons/unchecked.svg</normaloff>icons/unchecked.svg</iconset>
+     <normaloff>icons/unchecked.svg</normaloff>
+     <normalon>icons/checked.svg</normalon>icons/unchecked.svg</iconset>
    </property>
    <property name="text">
     <string>标记填充</string>
@@ -693,6 +695,22 @@
    </property>
    <property name="toolTip">
     <string>重置窗位窗宽到文件提供的窗位窗宽</string>
+   </property>
+  </action>
+  <action name="toggle_auto_wlww_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/unchecked.svg</normaloff>
+     <normalon>icons/checked.svg</normalon>icons/unchecked.svg</iconset>
+   </property>
+   <property name="text">
+    <string>自动窗位窗宽</string>
+   </property>
+   <property name="toolTip">
+    <string>启用/禁用在读取新序列时按照文件调整窗位窗宽</string>
    </property>
   </action>
   <zorder>label_edit_dock</zorder>

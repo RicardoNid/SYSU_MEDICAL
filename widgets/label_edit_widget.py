@@ -85,7 +85,7 @@ class LabelEditWidget(QListWidget, Ui_LabelEditWidget):
             '右肺中叶': ['外侧段','内侧段'],
             '右肺下叶': ['背段','内基底段','前基底段','外基底段','后基底段'],
             '左肺上叶': ['尖后段','前段','上舌段','下舌段'],
-            '左肺下叶': ['背段','前基底段','外基底段','后基底段'],
+            '左肺下叶': ['背段','前内基底段','外基底段','后基底段'],
         }
         self.segmentation_comgbobox.clear()
         for segmentation in lobulation_segmentation_dict[self.lobulation_combobox.currentText()]:
@@ -168,7 +168,7 @@ class LabelEditDialog(QDialog, Ui_LabelEditDialog):
             '右肺中叶': ['外侧段','内侧段'],
             '右肺下叶': ['背段','内基底段','前基底段','外基底段','后基底段'],
             '左肺上叶': ['尖后段','前段','上舌段','下舌段'],
-            '左肺下叶': ['背段','前基底段','外基底段','后基底段'],
+            '左肺下叶': ['背段','前内基底段','外基底段','后基底段'],
         }
         self.segmentation_comgbobox.clear()
         for segmentation in lobulation_segmentation_dict[self.lobulation_combobox.currentText()]:
