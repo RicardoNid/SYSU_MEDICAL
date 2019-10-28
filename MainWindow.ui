@@ -109,6 +109,7 @@
      <string>数据库(&amp;B)</string>
     </property>
     <addaction name="new_database_action"/>
+    <addaction name="open_database_action"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menu"/>
@@ -711,6 +712,21 @@
    </property>
    <property name="toolTip">
     <string>启用/禁用在读取新序列时按照文件调整窗位窗宽</string>
+   </property>
+  </action>
+  <action name="open_database_action">
+   <property name="icon">
+    <iconset>
+     <normaloff>icons/open_database.svg</normaloff>icons/open_database.svg</iconset>
+   </property>
+   <property name="text">
+    <string>打开数据库</string>
+   </property>
+   <property name="toolTip">
+    <string>从.xml文件打开数据库</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+O</string>
    </property>
   </action>
   <zorder>label_edit_dock</zorder>

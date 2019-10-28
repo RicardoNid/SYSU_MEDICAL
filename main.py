@@ -24,6 +24,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = 0, 1, 2
     CREATE_MODE, EDIT_MODE = 0, 1
 
+    DATABASE_PATH = osp.abspath(r'database')
+
 ####初始化####
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -103,6 +105,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def coupling_dataset_tree_widget(self):
         self.new_database_action.triggered.connect(self.new_database_slot)
+        self.open_database_action.triggered.connect(self.open_database_slot)
         self.database_widget.series_selected_signal.connect(self.input_files_slot)
 
     def coupling_series_list_widget(self):
@@ -393,6 +396,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if ok:
             self.database_widget.new_database(database_dir, database_name)
 
+    def open_database_slot(self):
+        '''从指定.xml文件打开dicom数据库'''
+        database_path, ok = QFileDialog.getOpenFileName(self, caption='选择要打开的数据库',
+                                                       directory=self.DATABASE_PATH,
+                                                       filter='数据库文件(*.xml)')
+        if ok:
+            self.database_widget.open_database(database_path)
+
     '''下面的方法与series_list_widget进行交互'''
     def open_dir_slot(self):
         '''打开文件夹，将.dcm文件增加到数据库'''
@@ -429,6 +440,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.current_file:
             with open(self.current_file.replace('.dcm', '.pkl'), 'wb') as annotations_pkl:
                 pickle.dump(self.canvas_widget.annotations, annotations_pkl)
+
+    def closeEvent(self, *args, **kwargs):
+        '''退出前事件'''
+        super().closeEvent(*args, **kwargs)
+        self.database_widget.save_item_states()
+
 
 app = QApplication(sys.argv)
 window = MainWindow()

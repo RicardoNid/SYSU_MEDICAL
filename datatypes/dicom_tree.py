@@ -13,6 +13,9 @@ def digit000(digits: str) -> str:
 
 class DicomTree(ElementTree):
     '''实现三级dicom文件信息树状存储的数据类,从xml ElementTree继承'''
+
+    NOT_ANNOTATED, SYSTEM_DEFINED_ANNOTATED, USER_DEFINED_ANNOTATED = '0', '1', '2'
+
     def __init__(self):
         super(DicomTree, self).__init__()
 
@@ -126,7 +129,7 @@ class DicomTree(ElementTree):
         else:
             current_study = list(current_patient)[study_uid_list.index(study_uid)]
 
-        # 检查是否已有此series，执行操作同上同上
+        # 检查是否已有此series，执行操作同上
         series_uid_list = [series.get('uid') for series in current_study.findall('series')]
         series_number_list = [series.get('number') for series in current_study.findall('series')]
         series_uid = metadata_dict['Series UID']
@@ -135,7 +138,8 @@ class DicomTree(ElementTree):
             new_series.attrib = {
                 'uid': metadata_dict['Series UID'],
                 'number': metadata_dict['Series Number'],
-                'description': metadata_dict['Series Description']
+                'description': metadata_dict['Series Description'],
+                'annotated' : self.NOT_ANNOTATED
             }
             series_number_list.append(metadata_dict['Series Number'])
             index = sorted(series_number_list).index(metadata_dict['Series Number'])
@@ -143,6 +147,9 @@ class DicomTree(ElementTree):
             current_series = new_series
         else:
             current_series = list(current_study)[series_uid_list.index(series_uid)]
+        # 根据标记文件的存在性,在series级上标记序列的被标记状况
+        if osp.exists(fp.replace('.dcm', '.pkl')):
+            current_series.attrib.update({'annotated' : self.SYSTEM_DEFINED_ANNOTATED})
 
         # 检查是否已有此instance
         instance_uid_list = [instance.get('uid') for instance in current_series.findall('instance')]
