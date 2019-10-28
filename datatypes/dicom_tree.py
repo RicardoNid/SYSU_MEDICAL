@@ -49,7 +49,7 @@ class DicomTree(ElementTree):
         for root, dirs, files in os.walk(dir):
             for file in files:
                 if file.lower().endswith('.dcm'):
-                    dicom_tree.add_file(file)
+                    dicom_tree.add_file(osp.join(root, file))
         return dicom_tree
 
     @staticmethod
@@ -73,6 +73,11 @@ class DicomTree(ElementTree):
         return metadata_dict
 
     def add_file(self, fp: str) -> None:
+        '''
+        增加文件到Dicom树
+        这是定义Dicom树的核心方法
+            因为Dicom树本质上只是具有特定Element和Attribute的xml树,提取和维护哪些属性就决定了DicomTree的定义
+        '''
         # TEST
         print(fp)
         '''将.dcm文件索引加入Dicom树'''
@@ -164,8 +169,8 @@ class DicomTree(ElementTree):
 
     def search_by_top_down_uid(self, uid: List[str]) -> Element:
         '''
-        根据从前往后，自顶向下的uid查找element,返回element
-        uid可以是patientID studyUID seriesUID instanceUID
+        根据从前往后，自顶向下的uid列表查找element,返回element
+        uid列表形式如同[patientID studyUID seriesUID instanceUID],根据查找的级别后面的ID可以缺省
         '''
         result_element = None
         if uid:

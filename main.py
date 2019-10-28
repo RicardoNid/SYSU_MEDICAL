@@ -1,5 +1,3 @@
-'''用于快速验证SYSULUNG的UI'''
-
 # insight: 代码范式：用例的快速实现
 #   1.将用例建模为action，其objectName()以'_action'结尾，在ui中注册action
 #   2.通过self.action(action_name)调用action，链接到实现函数
@@ -26,6 +24,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = 0, 1, 2
     CREATE_MODE, EDIT_MODE = 0, 1
 
+####初始化####
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         '''
@@ -196,6 +195,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.canvas_widget.is_canvas_creating_signal.\
             connect(lambda x: partial(
             self.toggle_actions, ['add_point_to_nearest_edge'])(x))
+####初始化完成####
 
     '''下面的方法协助动作分发的结构化'''
     def action(self, action_name: str) -> QAction:
@@ -235,7 +235,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     annotations = pickle.load(annotations_pkl)
                 self.canvas_widget.load_annotations(annotations)
             # 保存当前文件
-
 
     def scroll_request_slot(self, delta: int, orientation: int):
         '''响应canvas的滚动请求'''
@@ -402,7 +401,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
         files = get_dicom_files_path_from_dir(files_dir)
         # TODO: 之后修改为可以添加到任意数据库
-        self.database_widget.add_to_database(0, files)
+        self.database_widget.add_to_database(files)
 
         self.input_files_slot(files)
 
