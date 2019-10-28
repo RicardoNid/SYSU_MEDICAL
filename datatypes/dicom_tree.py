@@ -139,7 +139,11 @@ class DicomTree(ElementTree):
                 'uid': metadata_dict['Series UID'],
                 'number': metadata_dict['Series Number'],
                 'description': metadata_dict['Series Description'],
-                'annotated' : self.NOT_ANNOTATED
+                'annotated' : self.NOT_ANNOTATED,
+                # 以时间戳字符串(float转字符串)形式存储时间,便于排序
+                # 以time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(timestamp))) 语句进行格式化显示
+                'imported_timestamp' : str(time.time()),
+                'modified_timestamp' : ''
             }
             series_number_list.append(metadata_dict['Series Number'])
             index = sorted(series_number_list).index(metadata_dict['Series Number'])
@@ -174,32 +178,32 @@ class DicomTree(ElementTree):
         for fp in fps:
             self.add_file(fp)
 
-    def search_by_top_down_uid(self, uid: List[str]) -> Element:
+    def get_element_from_top_down_uid(self, uids: List[str]) -> Element:
         '''
         根据从前往后，自顶向下的uid列表查找element,返回element
         uid列表形式如同[patientID studyUID seriesUID instanceUID],根据查找的级别后面的ID可以缺省
         '''
         result_element = None
-        if uid:
-            patient_id = uid.pop(0)
+        if uids:
+            patient_id = uids.pop(0)
             for patient in self.getroot().findall('patient'):
                 if patient.attrib['id'] == patient_id:
                     result_element = patient
                     break
-            if uid and result_element:
-                study_uid = uid.pop(0)
+            if uids and result_element:
+                study_uid = uids.pop(0)
                 for study in result_element.findall('study'):
                     if study.attrib['uid'] == study_uid:
                         result_element = study
                         break
-                if uid and result_element:
-                    series_uid = uid.pop(0)
+                if uids and result_element:
+                    series_uid = uids.pop(0)
                     for series in result_element.findall('series'):
                         if series.attrib['uid'] == series_uid:
                             result_element = series
                             break
-                    if uid and result_element:
-                        instance_uid = uid.pop(0)
+                    if uids and result_element:
+                        instance_uid = uids.pop(0)
                         for instance in result_element.findall('instance'):
                             if instance.attrib['uid'] == instance_uid:
                                 result_element = instance

@@ -8,6 +8,9 @@
 from common_import import *
 from functools import partial
 import sys
+import time
+
+from xml.etree.ElementTree import Element
 
 from ui_MainWindow import  Ui_MainWindow
 from canvas import Canvas
@@ -39,6 +42,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         '''注册和分发WidgetAction'''
         self.raw_image = np.ndarray(0, dtype=int)
+        self.current_series = None
         self.current_file = ''
         self.current_file_wl = 0
         self.current_file_ww = 0
@@ -60,11 +64,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.init_docks()
 
         self.coupling_mainwindow_actions()
-        self.coupling_dataset_tree_widget()
+        self.coupling_canvas()
         self.coupling_series_list_widget()
         self.coupling_annotations_list_widget()
         self.coupling_label_edit_widget()
-        self.coupling_canvas()
+        self.coupling_database_tree_widget()
 
         # 设置窗口显示属性
         self.setFocusPolicy(Qt.ClickFocus)
@@ -103,10 +107,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.save_file_action.triggered.connect(self.save_current_work)
         self.wlww_reset_action.triggered.connect(self.wlww_reset_slot)
 
-    def coupling_dataset_tree_widget(self):
+    def coupling_database_tree_widget(self):
         self.new_database_action.triggered.connect(self.new_database_slot)
         self.open_database_action.triggered.connect(self.open_database_slot)
-        self.database_widget.series_selected_signal.connect(self.input_files_slot)
+        self.database_widget.series_selected_signal.connect(self.change_series_slot)
+        # 之前初始化database_widget时,尚未绑定,也无从接收
+        self.database_widget.send_latest_modified_series()
 
     def coupling_series_list_widget(self):
         '''初始化的一部分，执行与当前文件序列列表耦合的指令，单列一个函数以提升可读性'''
@@ -278,6 +284,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_zoom_value_to_fit(self.FIT_WIDTH)
 
     def set_zoom_value_to_fit(self, zoom_mode: int) -> None:
+        print('set_zoom_value_to_fit')
         '''设置计算出的缩放比例，触发zoom_action'''
         epsilon = 10.0
         w1 = self.canvas_area.width() - epsilon
@@ -404,6 +411,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if ok:
             self.database_widget.open_database(database_path)
 
+    def change_series_slot(self, series_item: QTreeWidgetItem, files: List[str]) -> None:
+        '''
+        响应变更当前序列的请求,有以下来源
+            1.双击数据库窗口中的序列
+            2.从open_dir_action输入
+        '''
+        print('changing series')
+        self.auto_refresh_current_series_modified_time()
+        self.auto_refresh_current_series_state()
+        self.query_current_series_state()
+        self.input_files_slot(files)
+        self.current_series = series_item
+        self.database_widget.expand_recursively(self.current_series)
+        self.database_widget.setCurrentItem(self.current_series)
+
+    def query_current_series_state(self):
+        if self.current_series:
+            if self.current_series.checkState(0) != 2:
+                annotated = QMessageBox.question(self, '', '标记上一个序列为已完成?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if annotated == QMessageBox.Yes:
+                    print(self.current_series)
+                    self.current_series.setCheckState(0, 2)
+
+    def auto_refresh_current_series_state(self):
+        if self.current_series and self.annotations_list_widget.annotations:
+            self.current_series.setCheckState(0, 1)
+
+    def auto_refresh_current_series_modified_time(self):
+        if self.current_series:
+            self.current_series.setText(4, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(time.time()))))
+
     '''下面的方法与series_list_widget进行交互'''
     def open_dir_slot(self):
         '''打开文件夹，将.dcm文件增加到数据库'''
@@ -411,10 +449,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not files_dir:
             return
         files = get_dicom_files_path_from_dir(files_dir)
-        # TODO: 之后修改为可以添加到任意数据库
+        # 数据库被更改后,原先的current_series对应的节点会失效,需要在更改前提取uid,在更改后根据uid映射到新节点
+        current_series_uids = []
+        if self.current_series:
+            current_series_uids = self.database_widget.get_top_down_uid(self.current_series)
         self.database_widget.add_to_database(files)
+        if current_series_uids:
+            self.current_series = self.database_widget.get_item_from_top_down_uid(current_series_uids)
 
-        self.input_files_slot(files)
+        self.database_widget.send_latest_imported_series()
 
     def input_files_slot(self, files):
         '''
@@ -437,14 +480,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     '''下面的方法实现全局功能'''
     def save_current_work(self):
         '''保存当前图像的所有标记为图像同名文件'''
-        if self.current_file:
+        if self.current_file and self.annotations_list_widget.annotations:
             with open(self.current_file.replace('.dcm', '.pkl'), 'wb') as annotations_pkl:
                 pickle.dump(self.canvas_widget.annotations, annotations_pkl)
 
     def closeEvent(self, *args, **kwargs):
         '''退出前事件'''
         super().closeEvent(*args, **kwargs)
-        self.database_widget.save_item_states()
+        self.auto_refresh_current_series_modified_time()
+        self.database_widget.save_item_states_and_modified_time()
+
 
 
 app = QApplication(sys.argv)

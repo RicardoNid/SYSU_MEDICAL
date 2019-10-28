@@ -830,7 +830,6 @@ class Canvas(QtWidgets.QWidget):
     ################################################################################
     #
     def change_pixmap(self, pixmap):
-        print('here')
         self.pixmap = pixmap
         self.annotations = []
         self.annotataions_backups = []
